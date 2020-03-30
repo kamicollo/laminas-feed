@@ -19,7 +19,7 @@ class LautDeRdfTest extends TestCase
 {
     protected $feedSamplePath;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         Reader\Reader::reset();
         $this->feedSamplePath = dirname(__FILE__) . '/_files/laut.de-rdf.xml';
@@ -144,7 +144,7 @@ class LautDeRdfTest extends TestCase
         $entry = $feed->current();
         $this->assertEquals(
             'Schon lÃ¤nger haderten die KÃ¶lner mit der Plattform des "fiesen Rupert Murdoch". '
-            . 'Das Fass zum Ãberlaufen brachte aber ein Werbebanner von Deutschrapper Sido.',
+                . 'Das Fass zum Ãberlaufen brachte aber ein Werbebanner von Deutschrapper Sido.',
             $entry->getDescription()
         );
     }
@@ -157,7 +157,7 @@ class LautDeRdfTest extends TestCase
         $entry = $feed->current();
         $this->assertEquals(
             'Schon lÃ¤nger haderten die KÃ¶lner mit der Plattform des "fiesen Rupert Murdoch". '
-            . 'Das Fass zum Ãberlaufen brachte aber ein Werbebanner von Deutschrapper Sido.',
+                . 'Das Fass zum Ãberlaufen brachte aber ein Werbebanner von Deutschrapper Sido.',
             $entry->getContent()
         );
     }

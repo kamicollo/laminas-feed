@@ -19,7 +19,7 @@ class WordpressAtom10Test extends TestCase
 {
     protected $feedSamplePath;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         Reader\Reader::reset();
         $this->feedSamplePath = dirname(__FILE__) . '/_files/wordpress-atom10.xml';
@@ -154,7 +154,7 @@ class WordpressAtom10Test extends TestCase
          * Note: "’" is not the same as "'" - don't replace in error
          */
         // @codingStandardsIgnoreStart
-        $this->assertEquals('Being in New Zealand does strange things to a person. Everybody who knows me, knows I don&#8217;t much like that crazy invention called a Book. However, being here I&#8217;ve already finished 4 books, all of which I can highly recommend.'."\n\n".'Agile Software Development with Scrum, by Ken Schwaber and Mike Beedle'."\n".'Domain-Driven Design: Tackling Complexity in the [...]', $entry->getDescription());
+        $this->assertEquals('Being in New Zealand does strange things to a person. Everybody who knows me, knows I don&#8217;t much like that crazy invention called a Book. However, being here I&#8217;ve already finished 4 books, all of which I can highly recommend.' . "\n\n" . 'Agile Software Development with Scrum, by Ken Schwaber and Mike Beedle' . "\n" . 'Domain-Driven Design: Tackling Complexity in the [...]', $entry->getDescription());
         // @codingStandardsIgnoreEnd
     }
 

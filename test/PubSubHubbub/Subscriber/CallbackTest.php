@@ -46,7 +46,7 @@ class CallbackTest extends TestCase
     /** @var DateTime */
     public $now;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         $this->_callback = new CallbackSubscriber();
 
@@ -500,7 +500,8 @@ class CallbackTest extends TestCase
         $methods     = $class->getMethods();
         $stubMethods = [];
         foreach ($methods as $method) {
-            if ($method->isPublic()
+            if (
+                $method->isPublic()
                 || ($method->isProtected() && $method->isAbstract())
             ) {
                 $stubMethods[] = $method->getName();

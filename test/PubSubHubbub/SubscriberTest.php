@@ -31,7 +31,7 @@ class SubscriberTest extends TestCase
 
     protected $tableGateway;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         $client = new HttpClient();
         PubSubHubbub::setHttpClient($client);
@@ -311,7 +311,8 @@ class SubscriberTest extends TestCase
         $methods     = $class->getMethods();
         $stubMethods = [];
         foreach ($methods as $method) {
-            if ($method->isPublic()
+            if (
+                $method->isPublic()
                 || ($method->isProtected() && $method->isAbstract())
             ) {
                 $stubMethods[] = $method->getName();

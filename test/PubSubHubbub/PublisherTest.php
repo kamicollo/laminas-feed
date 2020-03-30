@@ -24,7 +24,7 @@ class PublisherTest extends TestCase
     /** @var Publisher */
     protected $publisher;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         $client = new HttpClient();
         PubSubHubbub::setHttpClient($client);
@@ -295,7 +295,7 @@ class PublisherTest extends TestCase
         $this->publisher->notifyAll();
         $this->assertEquals(
             'hub.mode=publish&hub.url=http%3A%2F%2Fwww.example.com%2Ftopic&'
-            . 'hub.url=http%3A%2F%2Fwww.example.com%2Ftopic2',
+                . 'hub.url=http%3A%2F%2Fwww.example.com%2Ftopic2',
             $client->getRequest()->getContent()
         );
     }

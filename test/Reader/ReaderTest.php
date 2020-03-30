@@ -31,12 +31,12 @@ class ReaderTest extends TestCase
 {
     protected $feedSamplePath;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         $this->feedSamplePath = dirname(__FILE__) . '/_files';
     }
 
-    protected function tearDown()
+    protected function tearDown(): void
     {
         Reader\Reader::reset();
     }
@@ -162,7 +162,7 @@ class ReaderTest extends TestCase
 
     public function testImportsUri()
     {
-        if (! getenv('TESTS_LAMINAS_FEED_READER_ONLINE_ENABLED')) {
+        if (!getenv('TESTS_LAMINAS_FEED_READER_ONLINE_ENABLED')) {
             $this->markTestSkipped('testImportsUri() requires a network connection');
         }
 
@@ -175,7 +175,7 @@ class ReaderTest extends TestCase
      */
     public function testImportsUriAndThrowsExceptionIfNotAFeed()
     {
-        if (! getenv('TESTS_LAMINAS_FEED_READER_ONLINE_ENABLED')) {
+        if (!getenv('TESTS_LAMINAS_FEED_READER_ONLINE_ENABLED')) {
             $this->markTestSkipped('testImportsUri() requires a network connection');
         }
 
@@ -185,7 +185,7 @@ class ReaderTest extends TestCase
 
     public function testGetsFeedLinksAsValueObject()
     {
-        if (! getenv('TESTS_LAMINAS_FEED_READER_ONLINE_ENABLED')) {
+        if (!getenv('TESTS_LAMINAS_FEED_READER_ONLINE_ENABLED')) {
             $this->markTestSkipped('testGetsFeedLinksAsValueObject() requires a network connection');
         }
 
@@ -195,7 +195,7 @@ class ReaderTest extends TestCase
 
     public function testCompilesLinksAsArrayObject()
     {
-        if (! getenv('TESTS_LAMINAS_FEED_READER_ONLINE_ENABLED')) {
+        if (!getenv('TESTS_LAMINAS_FEED_READER_ONLINE_ENABLED')) {
             $this->markTestSkipped('testGetsFeedLinksAsValueObject() requires a network connection');
         }
         $links = Reader\Reader::findFeedLinks('https://github.com/laminas/laminas-feed/releases');
@@ -210,7 +210,7 @@ class ReaderTest extends TestCase
 
     public function testFeedSetLoadsFeedObjectWhenFeedArrayKeyAccessed()
     {
-        if (! getenv('TESTS_LAMINAS_FEED_READER_ONLINE_ENABLED')) {
+        if (!getenv('TESTS_LAMINAS_FEED_READER_ONLINE_ENABLED')) {
             $this->markTestSkipped('testGetsFeedLinksAsValueObject() requires a network connection');
         }
 
@@ -221,7 +221,7 @@ class ReaderTest extends TestCase
 
     public function testZeroCountFeedSetReturnedFromEmptyList()
     {
-        if (! getenv('TESTS_LAMINAS_FEED_READER_ONLINE_ENABLED')) {
+        if (!getenv('TESTS_LAMINAS_FEED_READER_ONLINE_ENABLED')) {
             $this->markTestSkipped('testGetsFeedLinksAsValueObject() requires a network connection');
         }
 
@@ -234,7 +234,7 @@ class ReaderTest extends TestCase
      */
     public function testGetsFeedLinksAndTrimsNewlines()
     {
-        if (! getenv('TESTS_LAMINAS_FEED_READER_ONLINE_ENABLED')) {
+        if (!getenv('TESTS_LAMINAS_FEED_READER_ONLINE_ENABLED')) {
             $this->markTestSkipped('testGetsFeedLinksAsValueObject() requires a network connection');
         }
 
@@ -254,8 +254,8 @@ class ReaderTest extends TestCase
         $response->setStatusCode(200);
         $response->setContent(
             '<!DOCTYPE html><html><head><link rel="alternate" type="application/rss+xml" '
-            . 'href="../test.rss"><link rel="alternate" type="application/atom+xml" href="/test.atom"></head>'
-            . '<body></body></html>'
+                . 'href="../test.rss"><link rel="alternate" type="application/atom+xml" href="/test.atom"></head>'
+                . '<body></body></html>'
         );
         $testAdapter->setResponse($response);
         Reader\Reader::setHttpClient(new HttpClient(null, ['adapter' => $testAdapter]));
