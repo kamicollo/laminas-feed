@@ -721,7 +721,7 @@ class Subscriber
          * Establish a persistent verify_token and attach key to callback
          * URL's path/query_string
          */
-        $key                        = $this->_generateSubscriptionKey($params, $hubUrl);
+        $key                        = $this->_generateSubscriptionKey($this->getTopicUrl(), $hubUrl);
         $token                      = $this->_generateVerifyToken();
         $params['hub.verify_token'] = $token;
 
@@ -767,15 +767,15 @@ class Subscriber
      * Simple helper to generate a verification token used in (un)subscribe
      * requests to a Hub Server.
      *
-     * @param  array  $params
+     * @param  string  $topicUrl
      * @param  string $hubUrl The Hub Server URL for which this token will apply
      * @return string
      */
     // @codingStandardsIgnoreStart
-    protected function _generateSubscriptionKey(array $params, $hubUrl)
+    protected function _generateSubscriptionKey($topicUrl, $hubUrl)
     {
         // @codingStandardsIgnoreEnd
-        $keyBase = $params['hub.topic'] . $hubUrl;
+        $keyBase = $topicUrl . $hubUrl;
         $key     = md5($keyBase);
 
         return $key;
@@ -848,7 +848,7 @@ class Subscriber
                 ->format('Y-m-d H:i:s');
         }
         $data = [
-            'id'              => $this->_generateSubscriptionKey($params, $hubUrl),
+            'id'              => $this->_generateSubscriptionKey($params['hub.topic'], $hubUrl),
             'topic_url'       => $params['hub.topic'],
             'hub_url'         => $hubUrl,
             'created_time'    => $now->format('Y-m-d H:i:s'),
