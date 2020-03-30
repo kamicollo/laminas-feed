@@ -327,4 +327,88 @@ class SubscriberTest extends TestCase
             ->getMock();
         return $mocked;
     }
+
+    public function testAddsHubHeader()
+    {
+        $this->subscriber->setHubHeader('hub', 'foo', 'bar');
+        $this->assertEquals(['foo' => 'bar'], $this->subscriber->getHubHeaders('hub'));
+    }
+
+    public function testAddsHubHeaders()
+    {
+        $this->subscriber->setHubHeaders('hub', ['foo' => 'bar', 'bar' => 'foo']);
+        $this->assertEquals(['foo' => 'bar', 'bar' => 'foo'], $this->subscriber->getHubHeaders('hub'));
+    }
+
+    public function testAddsHubHeaderMultipleHubs()
+    {
+        $this->subscriber->setHubHeader('hub1', 'foo', 'bar');
+        $this->subscriber->setHubHeader('hub2', 'foo', 'baz');
+        $this->assertEquals(['foo' => 'bar'], $this->subscriber->getHubHeaders('hub1'));
+    }
+
+    public function testRemovesHubHeader()
+    {
+        $this->subscriber->setHubHeader('hub', 'foo', 'bar');
+        $this->subscriber->removeHubHeader('hub', 'foo');
+        $this->assertEquals([], $this->subscriber->getHubHeaders('hub'));
+    }
+
+    public function testRemovesHubHeaderNotEmpty()
+    {
+        $this->subscriber->setHubHeader('hub', 'foo', 'bar');
+        $this->subscriber->setHubHeader('hub', 'quux', 'baz');
+        $this->subscriber->removeHubHeader('hub', 'foo');
+        $this->assertEquals(['quux' => 'baz'], $this->subscriber->getHubHeaders('hub'));
+    }
+
+    public function testRemovesHubHeaderByNull()
+    {
+        $this->subscriber->setHubHeader('hub', 'foo', 'bar');
+        $this->subscriber->setHubHeader('hub', 'foo', null);
+        $this->assertEquals([], $this->subscriber->getHubHeaders('hub'));
+    }
+
+    public function testRemovesAllHubHeaders()
+    {
+        $this->subscriber->setHubHeader('hub', 'foo', 'bar');
+        $this->subscriber->setHubHeader('hub', 'food', 'bar');
+        $this->subscriber->removeHubHeaders('hub');
+        $this->assertEquals([], $this->subscriber->getHubHeaders('hub'));
+    }
+
+    public function testRemovesAllHubHeadersMultipleHubs()
+    {
+        $this->subscriber->setHubHeader('hub', 'foo', 'bar');
+        $this->subscriber->setHubHeader('hub2', 'bar', 'foo');
+        $this->subscriber->removeHubHeaders('hub');
+        $this->assertEquals(['bar' => 'foo'], $this->subscriber->getHubHeaders('hub2'));
+        $this->assertEquals([], $this->subscriber->getHubHeaders('hub'));
+    }
+
+    public function testAddAuthorization()
+    {
+        $this->subscriber->addAuthentication('hub', ['username' => 'password']);
+        $this->assertEquals(
+            ['username' => 'password'],
+            $this->subscriber->getAuthentication('hub')
+        );
+    }
+
+    public function testAddAuthorizations()
+    {
+        $this->subscriber->addAuthentications(
+            [
+                'hub' => ['username' => 'password'],
+                'hub2' => ['username' => 'password2']
+            ]
+        );
+        $this->assertEquals(
+            [
+                'hub' => ['username' => 'password'],
+                'hub2' => ['username' => 'password2']
+            ],
+            $this->subscriber->getAuthentications()
+        );
+    }
 }

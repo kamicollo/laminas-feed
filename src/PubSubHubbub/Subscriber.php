@@ -94,13 +94,18 @@ class Subscriber
     protected $storage;
 
     /**
-     * An array of authentication credentials for HTTP Basic Authentication
-     * if required by specific Hubs. The array is indexed by Hub Endpoint URI
-     * and the value is a simple array of the username and password to apply.
+     * Hub-specific list of headers to be applied to each request
      *
      * @var array
      */
-    protected $authentications = [];
+    protected $hub_headers = [];
+
+    /**
+     * List of headers to be applied to each request for every hub
+     *
+     * @var array
+     */
+    protected $headers = [];
 
     /**
      * Tells the Subscriber to append any subscription identifier to the path
@@ -421,7 +426,7 @@ class Subscriber
     public function addAuthentication($url, array $authentication)
     {
         $this->_validateUrl($url, "url");
-        $this->authentications[$url] = $authentication;
+        $this->setHubHeader($url, 'auth', $authentication);
         return $this;
     }
 
@@ -445,7 +450,29 @@ class Subscriber
      */
     public function getAuthentications()
     {
-        return $this->authentications;
+        $auths = [];
+        foreach ($this->getAllHubHeaders() as $url => $headers) {
+            $auth = $this->getAuthentication($url);
+            if ($auth !== null) {
+                $auths[$url] = $auth;
+            }
+        }
+        return $auths;
+    }
+
+    /**
+     * Get authentication credentials for a particular hub
+     * @param string $$hubUrl
+     * @return array|null
+     */
+    public function getAuthentication($hubUrl)
+    {
+        $headers = $this->getHubHeaders($hubUrl);
+        if (array_key_exists('auth', $headers)) {
+            return $headers['auth'];
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -632,8 +659,9 @@ class Subscriber
         $this->errors    = [];
         $this->asyncHubs = [];
         foreach ($hubs as $url) {
-            if (array_key_exists($url, $this->authentications)) {
-                $auth = $this->authentications[$url];
+            $hub_headers = $this->getHubHeaders($url);
+            if (array_key_exists('auth', $hub_headers)) {
+                $auth = $hub_headers['auth'];
                 $client->setAuth($auth[0], $auth[1]);
             }
             //get params
@@ -880,6 +908,108 @@ class Subscriber
 
         $this->getStorage()->setSubscription($data);
     }
+
+    /**
+     * Set a header for a given Hub URL
+     *
+     * @param  string $url
+     * @return $this
+     * @throws Exception\InvalidArgumentException
+     */
+    public function setHubHeader($hubUrl, $header, $value)
+    {
+        $this->_validateUrl($hubUrl, 'hubUrl');
+        $this->_validateString($header, 'header');
+
+        if ($value === null) {
+            $this->removeHubHeader($hubUrl, $header);
+        } else {
+            $this->hub_headers[$hubUrl][$header] = $value;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Remove a header for a given Hub URL
+     *
+     * @param  string $hubUrl
+     * @param  string $header
+     * @return $this
+     * @throws Exception\InvalidArgumentException
+     */
+    public function removeHubHeader($hubUrl, $header)
+    {
+        $this->_validateUrl($hubUrl, "hubUrl");
+        $this->_validateString($header, "header");
+        if (array_key_exists($hubUrl, $this->hub_headers)) {
+            if (array_key_exists($header, $this->hub_headers[$hubUrl])) {
+                unset($this->hub_headers[$hubUrl][$header]);
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * Set headers for a given Hub URL
+     *
+     * @param  string $hubUrl Hub URL
+     * @param  array $headers An array of headers (name => value)
+     * @return $this
+     * @throws Exception\InvalidArgumentException
+     */
+    public function setHubHeaders($hubUrl, array $headers)
+    {
+        $this->_validateUrl($hubUrl, "hubUrl");
+        if (array_key_exists($hubUrl, $this->hub_headers)) {
+            $this->hub_headers[$hubUrl] = array_merge($this->hub_headers[$hubUrl], $headers);
+        } else {
+            $this->hub_headers[$hubUrl] = $headers;
+        }
+        return $this;
+    }
+
+    /**
+     * Remove all headers for a given Hub URL
+     *
+     * @param  string $hubUrl     
+     * @return $this
+     * @throws Exception\InvalidArgumentException
+     */
+    public function removeHubHeaders($hubUrl)
+    {
+        $this->_validateUrl($hubUrl, "hubUrl");
+        if (array_key_exists($hubUrl, $this->hub_headers)) {
+            unset($this->hub_headers[$hubUrl]);
+        }
+        return $this;
+    }
+
+    /**
+     * Get all headers for a given Hub URL
+     *
+     * @param  string $url
+     * @return array
+     * @throws Exception\InvalidArgumentException
+     */
+    public function getHubHeaders($hubUrl)
+    {
+        if (array_key_exists($hubUrl, $this->hub_headers)) {
+            return $this->hub_headers[$hubUrl];
+        } else {
+            return [];
+        }
+    }
+
+    /**
+     * Get all headers for all hubs
+     * @return array
+     */
+    public function getAllHubHeaders()
+    {
+        return $this->hub_headers;
+    }
+
 
     /**
      * This is STRICTLY for testing purposes only...
