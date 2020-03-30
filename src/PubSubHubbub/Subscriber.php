@@ -256,12 +256,17 @@ class Subscriber
     /**
      * Set the number of seconds for which any subscription will remain valid
      *
-     * @param  int $seconds
+     * @param  int|null $seconds
      * @return $this
      * @throws Exception\InvalidArgumentException
      */
     public function setLeaseSeconds($seconds)
     {
+        if ($seconds === null) {
+            $this->leaseSeconds = $seconds;
+            return $this;
+        }
+
         $seconds = intval($seconds);
         if ($seconds <= 0) {
             throw new Exception\InvalidArgumentException(
@@ -745,7 +750,7 @@ class Subscriber
             $params['hub.callback'] = rtrim($this->getCallbackUrl(), '/')
                 . '/' . PubSubHubbub::urlencode($key);
         }
-        if ($mode === 'subscribe' && $this->getLeaseSeconds() !== null) {
+        if ($mode === 'subscribe') {
             $params['hub.lease_seconds'] = $this->getLeaseSeconds();
         }
 
@@ -855,7 +860,7 @@ class Subscriber
 
         $now     = new \DateTime();
         $expires = null;
-        if (isset($params['hub.lease_seconds'])) {
+        if ($params['hub.lease_seconds'] !== null) {
             $expires = $now->add(new \DateInterval('PT' . $params['hub.lease_seconds'] . 'S'))
                 ->format('Y-m-d H:i:s');
         }
