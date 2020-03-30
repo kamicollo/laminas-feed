@@ -193,13 +193,47 @@ class Subscriber
      */
     public function setTopicUrl($url)
     {
-        if (empty($url) || !is_string($url) || !Uri::factory($url)->isValid()) {
-            throw new Exception\InvalidArgumentException(
-                'Invalid parameter "url" of "' . $url . '" must be a non-empty string and a valid URL'
-            );
-        }
+        $this->_validateUrl($url, "url");
         $this->topicUrl = $url;
         return $this;
+    }
+
+    /**
+     * Validates a given variable is a URL
+     *
+     * @param mixed $url String to validate
+     * @param string $name Name of the parameter to generate message for
+     * @throws Exception\InvalidArgumentException
+     * @return bool
+     */
+    protected function _validateUrl($url, $name)
+    {
+        if (empty($url) || !is_string($url) || !Uri::factory($url)->isValid()) {
+            throw new Exception\InvalidArgumentException(
+                'Invalid parameter "' . $name . '" of "' . $url .
+                    '" must be a non-empty string and a valid URL'
+            );
+        }
+        return true;
+    }
+
+    /**
+     * Validates a given variable is a non-empty string
+     *
+     * @param mixed $url String to validate
+     * @param string $name Name of the parameter to generate message for
+     * @throws Exception\InvalidArgumentException
+     * @return bool
+     */
+    protected function _validateString($string, $name)
+    {
+        if (empty($string) || !is_string($string)) {
+            throw new Exception\InvalidArgumentException(
+                'Invalid parameter "' . $name . '" of "' . $string .
+                    '" must be a non-empty string'
+            );
+        }
+        return true;
     }
 
     /**
@@ -258,11 +292,7 @@ class Subscriber
      */
     public function setCallbackUrl($url)
     {
-        if (empty($url) || !is_string($url) || !Uri::factory($url)->isValid()) {
-            throw new Exception\InvalidArgumentException(
-                'Invalid parameter "url" of "' . $url . '" must be a non-empty string and a valid URL'
-            );
-        }
+        $this->_validateUrl($url, "url");
         $this->callbackUrl = $url;
         return $this;
     }
@@ -331,11 +361,7 @@ class Subscriber
      */
     public function addHubUrl($url)
     {
-        if (empty($url) || !is_string($url) || !Uri::factory($url)->isValid()) {
-            throw new Exception\InvalidArgumentException(
-                'Invalid parameter "url" of "' . $url . '" must be a non-empty string and a valid URL'
-            );
-        }
+        $this->_validateUrl($url, "url");
         $this->hubUrls[] = $url;
         return $this;
     }
@@ -389,11 +415,7 @@ class Subscriber
      */
     public function addAuthentication($url, array $authentication)
     {
-        if (empty($url) || !is_string($url) || !Uri::factory($url)->isValid()) {
-            throw new Exception\InvalidArgumentException(
-                'Invalid parameter "url" of "' . $url . '" must be a non-empty string and a valid URL'
-            );
-        }
+        $this->_validateUrl($url, "url");
         $this->authentications[$url] = $authentication;
         return $this;
     }
@@ -447,22 +469,16 @@ class Subscriber
             $this->setParameters($name);
             return $this;
         }
-        if (empty($name) || !is_string($name)) {
-            throw new Exception\InvalidArgumentException(
-                'Invalid parameter "name" of "' . $name . '" must be a non-empty string'
-            );
-        }
+        $this->_validateString($name, "name");
+
         if ($value === null) {
             $this->removeParameter($name);
             return $this;
+        } else {
+            $this->_validateString($value, "value");
+            $this->parameters[$name] = $value;
+            return $this;
         }
-        if (empty($value) || (!is_string($value) && $value !== null)) {
-            throw new Exception\InvalidArgumentException(
-                'Invalid parameter "value" of "' . $value . '" must be a non-empty string'
-            );
-        }
-        $this->parameters[$name] = $value;
-        return $this;
     }
 
     /**
@@ -487,11 +503,7 @@ class Subscriber
      */
     public function removeParameter($name)
     {
-        if (empty($name) || !is_string($name)) {
-            throw new Exception\InvalidArgumentException(
-                'Invalid parameter "name" of "' . $name . '" must be a non-empty string'
-            );
-        }
+        $this->_validateString($name, 'name');
         if (array_key_exists($name, $this->parameters)) {
             unset($this->parameters[$name]);
         }
