@@ -523,4 +523,18 @@ class SubscriberTest extends TestCase
             'foo' => 'bar',
         ], $this->subscriber->getHeaders());
     }
+
+    public function testAddsheadersFromArrayUsingSetOptions()
+    {
+        $this->subscriber->setOptions([
+            'headers' => [
+                'foo' => 'bar',
+                'boo' => 'baz',
+            ],
+        ]);
+        $this->assertEquals([
+            'foo' => 'bar',
+            'boo' => 'baz',
+        ], $this->subscriber->getHeaders());
+    }
 }

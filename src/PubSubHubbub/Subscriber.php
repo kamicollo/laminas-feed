@@ -182,6 +182,9 @@ class Subscriber
         if (array_key_exists('parameters', $options)) {
             $this->setParameters($options['parameters']);
         }
+        if (array_key_exists('headers', $options)) {
+            $this->setHeaders($options['headers']);
+        }
         if (array_key_exists('authentications', $options)) {
             $this->addAuthentications($options['authentications']);
         }
