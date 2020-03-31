@@ -411,4 +411,116 @@ class SubscriberTest extends TestCase
             $this->subscriber->getAuthentications()
         );
     }
+
+    public function testAddsHubParameter()
+    {
+        $this->subscriber->setHubParameter('hub', 'foo', 'bar');
+        $this->assertEquals(['foo' => 'bar'], $this->subscriber->getHubParameters('hub'));
+    }
+
+    public function testAddsHubParametes()
+    {
+        $this->subscriber->setHubParameters('hub', ['foo' => 'bar', 'bar' => 'foo']);
+        $this->assertEquals(['foo' => 'bar', 'bar' => 'foo'], $this->subscriber->getHubParameters('hub'));
+    }
+
+    public function testAddsHubParameteMultipleHubs()
+    {
+        $this->subscriber->setHubParameter('hub1', 'foo', 'bar');
+        $this->subscriber->setHubParameter('hub2', 'foo', 'baz');
+        $this->assertEquals(['foo' => 'bar'], $this->subscriber->getHubParameters('hub1'));
+    }
+
+    public function testRemovesHubParameter()
+    {
+        $this->subscriber->setHubParameter('hub', 'foo', 'bar');
+        $this->subscriber->removeHubParameter('hub', 'foo');
+        $this->assertEquals([], $this->subscriber->getHubParameters('hub'));
+    }
+
+    public function testRemovesHubParameterNotEmpty()
+    {
+        $this->subscriber->setHubParameter('hub', 'foo', 'bar');
+        $this->subscriber->setHubParameter('hub', 'quux', 'baz');
+        $this->subscriber->removeHubParameter('hub', 'foo');
+        $this->assertEquals(['quux' => 'baz'], $this->subscriber->getHubParameters('hub'));
+    }
+
+    public function testRemovesHubParameterByNull()
+    {
+        $this->subscriber->setHubParameter('hub', 'foo', 'bar');
+        $this->subscriber->setHubParameter('hub', 'foo', null);
+        $this->assertEquals([], $this->subscriber->getHubParameters('hub'));
+    }
+
+    public function testRemovesAllHubParameters()
+    {
+        $this->subscriber->setHubParameter('hub', 'foo', 'bar');
+        $this->subscriber->setHubParameter('hub', 'food', 'bar');
+        $this->subscriber->removeHubParameters('hub');
+        $this->assertEquals([], $this->subscriber->getHubParameters('hub'));
+    }
+
+    public function testRemovesAllHubParametersMultipleHubs()
+    {
+        $this->subscriber->setHubParameter('hub', 'foo', 'bar');
+        $this->subscriber->setHubParameter('hub2', 'bar', 'foo');
+        $this->subscriber->removeHubParameters('hub');
+        $this->assertEquals(['bar' => 'foo'], $this->subscriber->getHubParameters('hub2'));
+        $this->assertEquals([], $this->subscriber->getHubParameters('hub'));
+    }
+
+    public function testAddsHeader()
+    {
+        $this->subscriber->setHeader('foo', 'bar');
+        $this->assertEquals(['foo' => 'bar'], $this->subscriber->getHeaders());
+    }
+
+    public function testAddsHeadersFromArray()
+    {
+        $this->subscriber->setHeaders([
+            'foo' => 'bar',
+            'boo' => 'baz',
+        ]);
+        $this->assertEquals([
+            'foo' => 'bar',
+            'boo' => 'baz',
+        ], $this->subscriber->getHeaders());
+    }
+
+    public function testAddsHeadersFromArrayInSingleMethod()
+    {
+        $this->subscriber->setHeader([
+            'foo' => 'bar',
+            'boo' => 'baz',
+        ]);
+        $this->assertEquals([
+            'foo' => 'bar',
+            'boo' => 'baz',
+        ], $this->subscriber->getHeaders());
+    }
+
+    public function testRemovesHeader()
+    {
+        $this->subscriber->setHeaders([
+            'foo' => 'bar',
+            'boo' => 'baz',
+        ]);
+        $this->subscriber->removeHeader('boo');
+        $this->assertEquals([
+            'foo' => 'bar',
+        ], $this->subscriber->getHeaders());
+    }
+
+    public function testRemovesHeaderIfSetToNull()
+    {
+        $this->subscriber->setHeaders([
+            'foo' => 'bar',
+            'boo' => 'baz',
+        ]);
+        $this->subscriber->setHeader('boo', null);
+        $this->assertEquals([
+            'foo' => 'bar',
+        ], $this->subscriber->getHeaders());
+    }
 }

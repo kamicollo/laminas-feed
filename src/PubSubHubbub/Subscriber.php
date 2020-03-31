@@ -33,6 +33,14 @@ class Subscriber
     protected $parameters = [];
 
     /**
+     * An array of optional parameters to be included in hub specific
+     * (un)subscribe requests.
+     *
+     * @var array
+     */
+    protected $hub_parameters = [];
+
+    /**
      * The URL of the topic (Rss or Atom feed) which is the subject of
      * our current intent to subscribe to/unsubscribe from updates from
      * the currently configured Hub Servers.
@@ -912,7 +920,9 @@ class Subscriber
     /**
      * Set a header for a given Hub URL
      *
-     * @param  string $url
+     * @param  string $hubUrl
+     * @param  string $header
+     * @param  mixed $value
      * @return $this
      * @throws Exception\InvalidArgumentException
      */
@@ -1008,6 +1018,175 @@ class Subscriber
     public function getAllHubHeaders()
     {
         return $this->hub_headers;
+    }
+
+    /**
+     * Set a parameter for a given Hub URL
+     *
+     * @param  string $hubUrl
+     * @param  string $parameter
+     * @param  mixed $value
+     * @return $this
+     * @throws Exception\InvalidArgumentException
+     */
+    public function setHubParameter($hubUrl, $parameter, $value)
+    {
+        $this->_validateUrl($hubUrl, 'hubUrl');
+        $this->_validateString($parameter, 'parameter');
+
+        if ($value === null) {
+            $this->removeHubParameter($hubUrl, $parameter);
+        } else {
+            $this->hub_parameters[$hubUrl][$parameter] = $value;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Remove a parameter for a given Hub URL
+     *
+     * @param  string $hubUrl
+     * @param  string $parameter
+     * @return $this
+     * @throws Exception\InvalidArgumentException
+     */
+    public function removeHubParameter($hubUrl, $parameter)
+    {
+        $this->_validateUrl($hubUrl, "hubUrl");
+        $this->_validateString($parameter, "parameter");
+        if (array_key_exists($hubUrl, $this->hub_parameters)) {
+            if (array_key_exists($parameter, $this->hub_parameters[$hubUrl])) {
+                unset($this->hub_parameters[$hubUrl][$parameter]);
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * Set headers for a given Hub URL
+     *
+     * @param  string $hubUrl Hub URL
+     * @param  array $parameters An array of headers (name => value)
+     * @return $this
+     * @throws Exception\InvalidArgumentException
+     */
+    public function setHubParameters($hubUrl, array $parameters)
+    {
+        $this->_validateUrl($hubUrl, "hubUrl");
+        if (array_key_exists($hubUrl, $this->hub_parameters)) {
+            $this->hub_parameters[$hubUrl] = array_merge($this->hub_parameters[$hubUrl], $parameters);
+        } else {
+            $this->hub_parameters[$hubUrl] = $parameters;
+        }
+        return $this;
+    }
+
+    /**
+     * Remove all parameters for a given Hub URL
+     *
+     * @param  string $hubUrl     
+     * @return $this
+     * @throws Exception\InvalidArgumentException
+     */
+    public function removeHubParameters($hubUrl)
+    {
+        $this->_validateUrl($hubUrl, "hubUrl");
+        if (array_key_exists($hubUrl, $this->hub_parameters)) {
+            unset($this->hub_parameters[$hubUrl]);
+        }
+        return $this;
+    }
+
+    /**
+     * Get all parameters for a given Hub URL
+     *
+     * @param  string $url
+     * @return array
+     * @throws Exception\InvalidArgumentException
+     */
+    public function getHubParameters($hubUrl)
+    {
+        if (array_key_exists($hubUrl, $this->hub_parameters)) {
+            return $this->hub_parameters[$hubUrl];
+        } else {
+            return [];
+        }
+    }
+
+    /**
+     * Get all Body parameters for all hubs
+     * @return array
+     */
+    public function getAllHubParameters()
+    {
+        return $this->hub_parameters;
+    }
+
+    /**
+     * Add an optional header to the (un)subscribe requests
+     *
+     * @param  string      $name
+     * @param  null|string $value
+     * @return $this
+     * @throws Exception\InvalidArgumentException
+     */
+    public function setHeader($name, $value = null)
+    {
+        if (is_array($name)) {
+            $this->setHeaders($name);
+            return $this;
+        }
+        $this->_validateString($name, "name");
+
+        if ($value === null) {
+            $this->removeHeader($name);
+            return $this;
+        } else {
+            $this->_validateString($value, "value");
+            $this->headers[$name] = $value;
+            return $this;
+        }
+    }
+
+    /**
+     * Add an optional header to the (un)subscribe requests
+     * 
+     * @param array $headers
+     * @return $this
+     */
+    public function setHeaders(array $headers)
+    {
+        foreach ($headers as $name => $value) {
+            $this->setHeader($name, $value);
+        }
+        return $this;
+    }
+
+    /**
+     * Remove an optional parameter for the (un)subscribe requests
+     *
+     * @param  string $name
+     * @return $this
+     * @throws Exception\InvalidArgumentException
+     */
+    public function removeHeader($name)
+    {
+        $this->_validateString($name, 'name');
+        if (array_key_exists($name, $this->headers)) {
+            unset($this->headers[$name]);
+        }
+        return $this;
+    }
+
+    /**
+     * Return an array of optional headers for (un)subscribe requests
+     *
+     * @return array
+     */
+    public function getHeaders()
+    {
+        return $this->headers;
     }
 
 
