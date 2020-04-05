@@ -139,9 +139,6 @@ class SubscriberHttpTest extends TestCase
                 . '&hub.verify_token=abc',
             $this->client->getResponse()->getBody()
         );
-
-        $subscriptionRecord = $this->subscriber->getStorage()->getSubscription($token);
-        $this->assertEquals($subscriptionRecord['subscription_state'], PubSubHubbub::SUBSCRIPTION_TODELETE);
     }
 
     // @codingStandardsIgnoreStart
