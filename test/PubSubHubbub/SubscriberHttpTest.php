@@ -87,7 +87,7 @@ class SubscriberHttpTest extends TestCase
         );
     }
 
-    public function testSubscriptionRequestWithParameterSendsExpectedPostData()
+    public function testSubscriptionRequestWithPathParameterSendsExpectedPostData()
     {
         $this->subscriber->setTopicUrl('http://www.example.com/topic');
         $this->subscriber->addHubUrl($this->baseuri . '/testRawPostData.php');
@@ -139,6 +139,134 @@ class SubscriberHttpTest extends TestCase
                 . '&hub.verify_token=abc',
             $this->client->getResponse()->getBody()
         );
+    }
+
+    public function testSubscriptionRequestSendsParametersExpectedPostData()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $this->subscriber->addHubUrl($this->baseuri . '/testRawPostData.php');
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->usePathParameter(false);
+        $this->subscriber->setParameter('hub.foo', 'bar');
+        $token = md5('http://www.example.com/topic' . $this->baseuri . '/testRawPostData.php');
+        $this->subscriber->setTestStaticToken('abc'); // override for testing
+        $this->subscriber->subscribeAll();
+        $this->assertEquals(
+            'hub.callback=http%3A%2F%2Fwww.example.com%2Fcallback%3Fxhub.subscription%3D' . $token
+                . '&hub.foo=bar&hub.mode='
+                . 'subscribe&hub.topic=http%3A%2F%2Fwww.example.com%2Ftopic&hub.veri'
+                . 'fy=sync&hub.verify=async&hub.verify_token=abc',
+            $this->client->getResponse()->getBody()
+        );
+    }
+
+    public function testSubscriptionRequestSendsHubParametersExpectedPostData()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $hubUrl = $this->baseuri . '/testRawPostData.php';
+        $this->subscriber->addHubUrl($hubUrl);
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->usePathParameter(false);
+        $this->subscriber->setHubParameter($hubUrl, 'hub.foo', 'bar');
+        $token = md5('http://www.example.com/topic' . $hubUrl);
+        $this->subscriber->setTestStaticToken('abc'); // override for testing
+        $this->subscriber->subscribeAll();
+        $this->assertEquals(
+            'hub.callback=http%3A%2F%2Fwww.example.com%2Fcallback%3Fxhub.subscription%3D' . $token
+                . '&hub.foo=bar&hub.mode='
+                . 'subscribe&hub.topic=http%3A%2F%2Fwww.example.com%2Ftopic&hub.veri'
+                . 'fy=sync&hub.verify=async&hub.verify_token=abc',
+            $this->client->getResponse()->getBody()
+        );
+    }
+
+    public function testSubscriptionRequestSendsExpectedHeaders()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $hubUrl = $this->baseuri . '/testRawHeaders.php';
+        $this->subscriber->addHubUrl($hubUrl);
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->setTestStaticToken('abc'); // override for testing
+        $this->subscriber->subscribeAll();
+        $headers = json_decode($this->client->getResponse()->getBody(), true);
+        $this->assertEquals(
+            'application/x-www-form-urlencoded',
+            $headers['Content-Type']
+        );
+    }
+
+    public function testSubscriptionRequestSendsExpectedAuth()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $hubUrl = $this->baseuri . '/testRawHeaders.php';
+        $this->subscriber->addHubUrl($hubUrl);
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->setTestStaticToken('abc'); // override for testing
+        $this->subscriber->addAuthentication($hubUrl, ['user', 'pass']);
+        $this->subscriber->subscribeAll();
+        $headers = json_decode($this->client->getResponse()->getBody(), true);
+        $this->assertEquals(
+            'Basic ' . base64_encode('user:pass'),
+            $headers['Authorization']
+        );
+    }
+
+    public function testSubscriptionRequestDoesNotSendExpectedAuth()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $hubUrl = $this->baseuri . '/testRawHeaders.php';
+        $this->subscriber->addHubUrl($hubUrl);
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->setTestStaticToken('abc'); // override for testing
+        $this->subscriber->addAuthentication('randomurl', ['user', 'pass']);
+        $this->subscriber->subscribeAll();
+        $headers = json_decode($this->client->getResponse()->getBody(), true);
+        $this->assertArrayNotHasKey('Authorization', $headers);
+    }
+
+    public function testSubscriptionRequestSendsExpectedHeader()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $hubUrl = $this->baseuri . '/testRawHeaders.php';
+        $this->subscriber->addHubUrl($hubUrl);
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->setTestStaticToken('abc'); // override for testing
+        $this->subscriber->setHeader('foo', 'bar');
+        $this->subscriber->subscribeAll();
+        $headers = json_decode($this->client->getResponse()->getBody(), true);
+        $this->assertEquals(
+            'bar',
+            $headers['foo']
+        );
+    }
+
+    public function testSubscriptionRequestSendsExpectedHubHeader()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $hubUrl = $this->baseuri . '/testRawHeaders.php';
+        $this->subscriber->addHubUrl($hubUrl);
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->setTestStaticToken('abc'); // override for testing
+        $this->subscriber->setHubHeader($hubUrl, 'foo', 'bar');
+        $this->subscriber->subscribeAll();
+        $headers = json_decode($this->client->getResponse()->getBody(), true);
+        $this->assertEquals(
+            'bar',
+            $headers['foo']
+        );
+    }
+
+    public function testSubscriptionRequestSendsNoExpectedHubHeader()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $hubUrl = $this->baseuri . '/testRawHeaders.php';
+        $this->subscriber->addHubUrl($hubUrl);
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->setTestStaticToken('abc'); // override for testing
+        $this->subscriber->setHubHeader('randomurl', 'foo', 'bar');
+        $this->subscriber->subscribeAll();
+        $headers = json_decode($this->client->getResponse()->getBody(), true);
+        $this->assertArrayNotHasKey('foo', $headers);
     }
 
     // @codingStandardsIgnoreStart
