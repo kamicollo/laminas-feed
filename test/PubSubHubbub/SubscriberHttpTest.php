@@ -75,11 +75,49 @@ class SubscriberHttpTest extends TestCase
         $this->subscriber->setCallbackUrl('http://www.example.com/callback');
         $this->subscriber->usePathParameter(false);
         $this->subscriber->setLeaseSeconds(2592000);
+        $token = md5('http://www.example.com/topic' . $this->baseuri . '/testRawPostData.php');
         $this->subscriber->setTestStaticToken('abc'); // override for testing
         $this->subscriber->subscribeAll();
         $this->assertEquals(
-            'hub.callback=http%3A%2F%2Fwww.example.com%2Fcallback%3Fxhub.subscription%3D5536df06b5d'
-                . 'cb966edab3a4c4d56213c16a8184b&hub.lease_seconds=2592000&hub.mode='
+            'hub.callback=http%3A%2F%2Fwww.example.com%2Fcallback%3Fxhub.subscription%3D' . $token
+                . '&hub.lease_seconds=2592000&hub.mode='
+                . 'subscribe&hub.topic=http%3A%2F%2Fwww.example.com%2Ftopic&hub.veri'
+                . 'fy=sync&hub.verify=async&hub.verify_token=abc',
+            $this->client->getResponse()->getBody()
+        );
+    }
+
+    public function testSubscriptionRequestWithParameterSendsExpectedPostData()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $this->subscriber->addHubUrl($this->baseuri . '/testRawPostData.php');
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->usePathParameter(true);
+        $this->subscriber->setLeaseSeconds(2592000);
+        $token = md5('http://www.example.com/topic' . $this->baseuri . '/testRawPostData.php');
+        $this->subscriber->setTestStaticToken('abc'); // override for testing
+        $this->subscriber->subscribeAll();
+        $this->assertEquals(
+            'hub.callback=http%3A%2F%2Fwww.example.com%2Fcallback%2F' . $token
+                . '&hub.lease_seconds=2592000&hub.mode='
+                . 'subscribe&hub.topic=http%3A%2F%2Fwww.example.com%2Ftopic&hub.veri'
+                . 'fy=sync&hub.verify=async&hub.verify_token=abc',
+            $this->client->getResponse()->getBody()
+        );
+    }
+
+    public function testSubscriptionRequestNoLeaseSecondsSendsExpectedPostData()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $this->subscriber->addHubUrl($this->baseuri . '/testRawPostData.php');
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->usePathParameter(true);
+        $token = md5('http://www.example.com/topic' . $this->baseuri . '/testRawPostData.php');
+        $this->subscriber->setTestStaticToken('abc'); // override for testing
+        $this->subscriber->subscribeAll();
+        $this->assertEquals(
+            'hub.callback=http%3A%2F%2Fwww.example.com%2Fcallback%2F' . $token
+                . '&hub.mode='
                 . 'subscribe&hub.topic=http%3A%2F%2Fwww.example.com%2Ftopic&hub.veri'
                 . 'fy=sync&hub.verify=async&hub.verify_token=abc',
             $this->client->getResponse()->getBody()
@@ -91,17 +129,18 @@ class SubscriberHttpTest extends TestCase
         $this->subscriber->setTopicUrl('http://www.example.com/topic');
         $this->subscriber->addHubUrl($this->baseuri . '/testRawPostData.php');
         $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $token = md5('http://www.example.com/topic' . $this->baseuri . '/testRawPostData.php');
         $this->subscriber->setTestStaticToken('abc'); //override for testing
         $this->subscriber->unsubscribeAll();
         $this->assertEquals(
-            'hub.callback=http%3A%2F%2Fwww.example.com%2Fcallback%3Fxhub.subscription%3D5536df06b5d'
-                . 'cb966edab3a4c4d56213c16a8184b&hub.mode=unsubscribe&hub.topic=http'
+            'hub.callback=http%3A%2F%2Fwww.example.com%2Fcallback%3Fxhub.subscription%3D' . $token
+                . '&hub.mode=unsubscribe&hub.topic=http'
                 . '%3A%2F%2Fwww.example.com%2Ftopic&hub.verify=sync&hub.verify=async'
                 . '&hub.verify_token=abc',
             $this->client->getResponse()->getBody()
         );
 
-        $subscriptionRecord = $this->subscriber->getStorage()->getSubscription();
+        $subscriptionRecord = $this->subscriber->getStorage()->getSubscription($token);
         $this->assertEquals($subscriptionRecord['subscription_state'], PubSubHubbub::SUBSCRIPTION_TODELETE);
     }
 
