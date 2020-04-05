@@ -388,9 +388,9 @@ class SubscriberTest extends TestCase
 
     public function testAddAuthorization()
     {
-        $this->subscriber->addAuthentication('hub', ['username' => 'password']);
+        $this->subscriber->addAuthentication('hub', ['username', 'password']);
         $this->assertEquals(
-            ['username' => 'password'],
+            ['username', 'password'],
             $this->subscriber->getAuthentication('hub')
         );
     }
@@ -399,14 +399,14 @@ class SubscriberTest extends TestCase
     {
         $this->subscriber->addAuthentications(
             [
-                'hub' => ['username' => 'password'],
-                'hub2' => ['username' => 'password2']
+                'hub' => ['username', 'password'],
+                'hub2' => ['username', 'password2']
             ]
         );
         $this->assertEquals(
             [
-                'hub' => ['username' => 'password'],
-                'hub2' => ['username' => 'password2']
+                'hub' => ['username', 'password'],
+                'hub2' => ['username', 'password2']
             ],
             $this->subscriber->getAuthentications()
         );

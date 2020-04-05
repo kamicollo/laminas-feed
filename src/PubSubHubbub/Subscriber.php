@@ -430,7 +430,8 @@ class Subscriber
     /**
      * Add authentication credentials for a given URL
      *
-     * @param  string $url
+     * @param  string $url HubUrl
+     * @param array $authentication array in a form of [user, password]
      * @return $this
      * @throws Exception\InvalidArgumentException
      */
@@ -483,8 +484,10 @@ class Subscriber
     public function getAuthentication($hubUrl)
     {
         $headers = $this->getHubHeaders($hubUrl);
-        if (array_key_exists('auth', $headers)) {
-            return $headers['auth'];
+        if (array_key_exists('Authorization', $headers)) {
+            $value = $headers['Authorization'];
+            $string = base64_decode(str_replace('Basic ', "", $value));
+            return explode(":", $string);
         } else {
             return null;
         }
