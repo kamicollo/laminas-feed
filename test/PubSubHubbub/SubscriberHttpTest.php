@@ -73,6 +73,7 @@ class SubscriberHttpTest extends TestCase
         $this->subscriber->setTopicUrl('http://www.example.com/topic');
         $this->subscriber->addHubUrl($this->baseuri . '/testRawPostData.php');
         $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->usePathParameter(false);
         $this->subscriber->setLeaseSeconds(2592000);
         $this->subscriber->setTestStaticToken('abc'); // override for testing
         $this->subscriber->subscribeAll();
