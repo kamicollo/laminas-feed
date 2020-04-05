@@ -899,6 +899,9 @@ class Subscriber
 
         $now     = new \DateTime();
         $expires = null;
+        if (!array_key_exists('hub.lease_seconds', $params)) {
+            $params['hub.lease_seconds'] = null;
+        }
         if ($params['hub.lease_seconds'] !== null) {
             $expires = $now->add(new \DateInterval('PT' . $params['hub.lease_seconds'] . 'S'))
                 ->format('Y-m-d H:i:s');
