@@ -789,7 +789,7 @@ class Subscriber
             $params['hub.callback'] = rtrim($this->getCallbackUrl(), '/')
                 . '/' . PubSubHubbub::urlencode($key);
         }
-        if ($mode === 'subscribe') {
+        if (($mode === 'subscribe')  && ($this->leaseSeconds !== null)) {
             $params['hub.lease_seconds'] = $this->getLeaseSeconds();
         }
 
