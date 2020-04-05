@@ -180,6 +180,95 @@ class SubscriberHttpTest extends TestCase
         );
     }
 
+    public function testSubscriptionRequestSendsExpectedHeaders()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $hubUrl = $this->baseuri . '/testRawHeaders.php';
+        $this->subscriber->addHubUrl($hubUrl);
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->setTestStaticToken('abc'); // override for testing
+        $this->subscriber->subscribeAll();
+        $headers = json_decode($this->client->getResponse()->getBody(), true);
+        $this->assertEquals(
+            'application/x-www-form-urlencoded',
+            $headers['Content-Type']
+        );
+    }
+
+    public function testSubscriptionRequestSendsExpectedAuth()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $hubUrl = $this->baseuri . '/testRawHeaders.php';
+        $this->subscriber->addHubUrl($hubUrl);
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->setTestStaticToken('abc'); // override for testing
+        $this->subscriber->addAuthentication($hubUrl, ['user', 'pass']);
+        $this->subscriber->subscribeAll();
+        $headers = json_decode($this->client->getResponse()->getBody(), true);
+        $this->assertEquals(
+            'Basic ' . base64_encode('user:pass'),
+            $headers['Authorization']
+        );
+    }
+
+    public function testSubscriptionRequestDoesNotSendExpectedAuth()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $hubUrl = $this->baseuri . '/testRawHeaders.php';
+        $this->subscriber->addHubUrl($hubUrl);
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->setTestStaticToken('abc'); // override for testing
+        $this->subscriber->addAuthentication('randomurl', ['user', 'pass']);
+        $this->subscriber->subscribeAll();
+        $headers = json_decode($this->client->getResponse()->getBody(), true);
+        $this->assertArrayNotHasKey('Authorization', $headers);
+    }
+
+    public function testSubscriptionRequestSendsExpectedHeader()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $hubUrl = $this->baseuri . '/testRawHeaders.php';
+        $this->subscriber->addHubUrl($hubUrl);
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->setTestStaticToken('abc'); // override for testing
+        $this->subscriber->setHeader('foo', 'bar');
+        $this->subscriber->subscribeAll();
+        $headers = json_decode($this->client->getResponse()->getBody(), true);
+        $this->assertEquals(
+            'bar',
+            $headers['foo']
+        );
+    }
+
+    public function testSubscriptionRequestSendsExpectedHubHeader()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $hubUrl = $this->baseuri . '/testRawHeaders.php';
+        $this->subscriber->addHubUrl($hubUrl);
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->setTestStaticToken('abc'); // override for testing
+        $this->subscriber->setHubHeader($hubUrl, 'foo', 'bar');
+        $this->subscriber->subscribeAll();
+        $headers = json_decode($this->client->getResponse()->getBody(), true);
+        $this->assertEquals(
+            'bar',
+            $headers['foo']
+        );
+    }
+
+    public function testSubscriptionRequestSendsNoExpectedHubHeader()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $hubUrl = $this->baseuri . '/testRawHeaders.php';
+        $this->subscriber->addHubUrl($hubUrl);
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->setTestStaticToken('abc'); // override for testing
+        $this->subscriber->setHubHeader('randomurl', 'foo', 'bar');
+        $this->subscriber->subscribeAll();
+        $headers = json_decode($this->client->getResponse()->getBody(), true);
+        $this->assertArrayNotHasKey('foo', $headers);
+    }
+
     // @codingStandardsIgnoreStart
     protected function _getCleanMock($className)
     {

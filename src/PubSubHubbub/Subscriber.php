@@ -437,7 +437,11 @@ class Subscriber
     public function addAuthentication($url, array $authentication)
     {
         $this->_validateUrl($url, "url");
-        $this->setHubHeader($url, 'auth', $authentication);
+        $this->setHubHeader(
+            $url,
+            'Authorization',
+            'Basic ' . base64_encode($authentication[0] . ':' . $authentication[1])
+        );
         return $this;
     }
 
@@ -670,11 +674,14 @@ class Subscriber
         $this->errors    = [];
         $this->asyncHubs = [];
         foreach ($hubs as $url) {
+
+            //add common headers
+            $client->getRequest()->getHeaders()->addHeaders($this->getHeaders());
+
+            //add hub headers
             $hub_headers = $this->getHubHeaders($url);
-            if (array_key_exists('auth', $hub_headers)) {
-                $auth = $hub_headers['auth'];
-                $client->setAuth($auth[0], $auth[1]);
-            }
+            $client->getRequest()->getHeaders()->addHeaders($hub_headers);
+
             //get params
             $params = $this->_getRequestParameters($url, $mode);
 
