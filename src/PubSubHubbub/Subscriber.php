@@ -799,6 +799,11 @@ class Subscriber
             $params[$name] = $value;
         }
 
+        $hubParams = $this->getHubParameters($hubUrl);
+        foreach ($hubParams as $name => $value) {
+            $params[$name] = $value;
+        }
+
         return $params;
     }
 

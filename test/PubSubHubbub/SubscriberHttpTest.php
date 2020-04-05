@@ -87,7 +87,7 @@ class SubscriberHttpTest extends TestCase
         );
     }
 
-    public function testSubscriptionRequestWithParameterSendsExpectedPostData()
+    public function testSubscriptionRequestWithPathParameterSendsExpectedPostData()
     {
         $this->subscriber->setTopicUrl('http://www.example.com/topic');
         $this->subscriber->addHubUrl($this->baseuri . '/testRawPostData.php');
@@ -137,6 +137,45 @@ class SubscriberHttpTest extends TestCase
                 . '&hub.mode=unsubscribe&hub.topic=http'
                 . '%3A%2F%2Fwww.example.com%2Ftopic&hub.verify=sync&hub.verify=async'
                 . '&hub.verify_token=abc',
+            $this->client->getResponse()->getBody()
+        );
+    }
+
+    public function testSubscriptionRequestSendsParametersExpectedPostData()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $this->subscriber->addHubUrl($this->baseuri . '/testRawPostData.php');
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->usePathParameter(false);
+        $this->subscriber->setParameter('hub.foo', 'bar');
+        $token = md5('http://www.example.com/topic' . $this->baseuri . '/testRawPostData.php');
+        $this->subscriber->setTestStaticToken('abc'); // override for testing
+        $this->subscriber->subscribeAll();
+        $this->assertEquals(
+            'hub.callback=http%3A%2F%2Fwww.example.com%2Fcallback%3Fxhub.subscription%3D' . $token
+                . '&hub.foo=bar&hub.mode='
+                . 'subscribe&hub.topic=http%3A%2F%2Fwww.example.com%2Ftopic&hub.veri'
+                . 'fy=sync&hub.verify=async&hub.verify_token=abc',
+            $this->client->getResponse()->getBody()
+        );
+    }
+
+    public function testSubscriptionRequestSendsHubParametersExpectedPostData()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $hubUrl = $this->baseuri . '/testRawPostData.php';
+        $this->subscriber->addHubUrl($hubUrl);
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->usePathParameter(false);
+        $this->subscriber->setHubParameter($hubUrl, 'hub.foo', 'bar');
+        $token = md5('http://www.example.com/topic' . $hubUrl);
+        $this->subscriber->setTestStaticToken('abc'); // override for testing
+        $this->subscriber->subscribeAll();
+        $this->assertEquals(
+            'hub.callback=http%3A%2F%2Fwww.example.com%2Fcallback%3Fxhub.subscription%3D' . $token
+                . '&hub.foo=bar&hub.mode='
+                . 'subscribe&hub.topic=http%3A%2F%2Fwww.example.com%2Ftopic&hub.veri'
+                . 'fy=sync&hub.verify=async&hub.verify_token=abc',
             $this->client->getResponse()->getBody()
         );
     }
