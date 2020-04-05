@@ -133,6 +133,13 @@ class Subscriber
     protected $usePathParameter = false;
 
     /**
+     * ]
+     *
+     * @var PSRClientInterface
+     */
+    protected $http_client;
+
+    /**
      * Constructor; accepts an array or Traversable instance to preset
      * options for the Subscriber without calling all supported setter
      * methods in turn.
@@ -668,6 +675,7 @@ class Subscriber
     {
         // @codingStandardsIgnoreEnd
         $client = $this->_getHttpClient();
+
         $hubs   = $this->getHubUrls();
         if (empty($hubs)) {
             throw new Exception\RuntimeException(
@@ -678,19 +686,15 @@ class Subscriber
         $this->asyncHubs = [];
         foreach ($hubs as $url) {
 
-            //add common headers
-            $client->getRequest()->getHeaders()->addHeaders($this->getHeaders());
-
-            //add hub headers
-            $hub_headers = $this->getHubHeaders($url);
-            $client->getRequest()->getHeaders()->addHeaders($hub_headers);
-
+            //get all headers
+            $headers = array_merge($this->getHeaders(), $this->getHubHeaders($url));
             //get params
             $params = $this->_getRequestParameters($url, $mode);
 
-            //construct request
-            $client->setUri($url);
-            $client->setRawBody(
+            $request = $client->createRequest(
+                'POST',
+                $url,
+                $headers,
                 $this->_toByteValueOrderedString(
                     $this->_urlEncode($params)
                 )
@@ -700,7 +704,7 @@ class Subscriber
             $this->saveSubscriptionState($mode, $url, $params);
 
             //execute request
-            $response = $client->send();
+            $response = $client->sendRequest($request);
             if (
                 $response->getStatusCode() !== 204
                 && $response->getStatusCode() !== 202
@@ -729,18 +733,23 @@ class Subscriber
     /**
      * Get a basic prepared HTTP client for use
      *
-     * @return \Laminas\Http\Client
+     * @return PSR7HTTPClient
      */
     // @codingStandardsIgnoreStart
     protected function _getHttpClient()
     {
         // @codingStandardsIgnoreEnd
-        $client = PubSubHubbub::getHttpClient();
-        $client->setMethod(HttpRequest::METHOD_POST);
-        $client->setOptions([
-            'useragent' => 'Laminas_Feed_Pubsubhubbub_Subscriber/' . Version::VERSION,
-        ]);
-        return $client;
+        if ($this->http_client === null) {
+            $client = PubSubHubbub::getHttpClient();
+            $this->setHTTPClient(new PSR7HTTPClient($client));
+        }
+
+        return $this->http_client;
+    }
+
+    public function setHTTPClient(PSR7ClientInterface $client)
+    {
+        $this->http_client = $client;
     }
 
     /**
