@@ -430,7 +430,8 @@ class Subscriber
     /**
      * Add authentication credentials for a given URL
      *
-     * @param  string $url
+     * @param  string $url HubUrl
+     * @param array $authentication array in a form of [user, password]
      * @return $this
      * @throws Exception\InvalidArgumentException
      */
