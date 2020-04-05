@@ -8,6 +8,8 @@
 
 namespace LaminasTest\Feed\PubSubHubbub;
 
+use Laminas\Db\Adapter\Adapter;
+use Laminas\Db\TableGateway\TableGateway;
 use Laminas\Feed\PubSubHubbub\Model\Subscription;
 use Laminas\Feed\PubSubHubbub\PubSubHubbub;
 use Laminas\Feed\PubSubHubbub\Subscriber;
@@ -116,7 +118,11 @@ class SubscriberHttpTest extends TestCase
                 $stubMethods[] = $method->getName();
             }
         }
-        $mocked = $this->getMockBuilder($className)->setMethods($stubMethods)->getMock();
+        $parts    = explode('\\', $class->getName());
+        $table    = strtolower(array_pop($parts));
+        $adapter = new Adapter(['driver' => 'pdo_sqlite', 'dsn' => 'sqlite::memory:']);
+        $tableGateway = new TableGateway($table, $adapter);
+        $mocked = $this->getMockBuilder($className)->setConstructorArgs([$tableGateway])->setMethods($stubMethods)->getMock();
         return $mocked;
     }
 }
