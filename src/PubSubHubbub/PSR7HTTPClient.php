@@ -32,15 +32,10 @@ class PSR7HTTPClient implements PSR7ClientInterface
 
     public function createRequest(
         $method,
-        $uri,
-        array $headers = [],
-        $body = null,
-        $version = '1.1'
+        $uri
     ): RequestInterface {
         $request = new HttpRequest();
-        $request->setMethod($method)->setUri($uri)->setContent($body);
-        $request->getHeaders()->addHeaders($headers);
-        $request->setVersion($version);
+        $request->setMethod($method)->setUri($uri);
         $psr7request =  Psr7ServerRequest::fromLaminas($request);
         return $psr7request;
     }

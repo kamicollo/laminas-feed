@@ -8,11 +8,10 @@
 
 namespace Laminas\Feed\PubSubHubbub;
 
-use DateInterval;
-use DateTime;
+use Laminas\Diactoros\Stream as DiactorosStream;
 use Laminas\Feed\Uri;
-use Laminas\Http\Request as HttpRequest;
 use Laminas\Stdlib\ArrayUtils;
+
 use Traversable;
 
 class Subscriber
@@ -686,19 +685,29 @@ class Subscriber
         $this->asyncHubs = [];
         foreach ($hubs as $url) {
 
-            //get all headers
-            $headers = array_merge($this->getHeaders(), $this->getHubHeaders($url));
+
             //get params
             $params = $this->_getRequestParameters($url, $mode);
 
+            //create request
             $request = $client->createRequest(
                 'POST',
-                $url,
-                $headers,
-                $this->_toByteValueOrderedString(
-                    $this->_urlEncode($params)
-                )
+                $url
             );
+
+            $stream = fopen('php://memory', 'w+');
+            fwrite($stream, $this->_toByteValueOrderedString(
+                $this->_urlEncode($params)
+            ));
+            $request = $request->withBody(new DiactorosStream($stream));
+
+            //set headers
+            //get all headers
+            $headers = array_merge($this->getHeaders(), $this->getHubHeaders($url));
+
+            foreach ($headers as $name => $value) {
+                $request = $request->withHeader($name, $value);
+            }
 
             // store subscription to storage
             $this->saveSubscriptionState($mode, $url, $params);
