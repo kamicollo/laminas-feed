@@ -139,6 +139,16 @@ class SubscriberHttpTest extends TestCase
                 . '&hub.verify_token=abc',
             $this->client->getResponse()->getBody()
         );
+    }
+
+    public function testUnsubscriptionRequestDBState()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $this->subscriber->addHubUrl($this->baseuri . '/testRawPostData.php');
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $token = md5('http://www.example.com/topic' . $this->baseuri . '/testRawPostData.php');
+        $this->subscriber->setTestStaticToken('abc'); //override for testing
+        $this->subscriber->unsubscribeAll();
 
         $subscriptionRecord = $this->subscriber->getStorage()->getSubscription($token);
         $this->assertEquals($subscriptionRecord['subscription_state'], PubSubHubbub::SUBSCRIPTION_TODELETE);
