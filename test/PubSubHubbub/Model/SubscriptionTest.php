@@ -41,7 +41,7 @@ class SubscriptionTest extends TestCase
 
         $this->assertTrue($subscription->hasSubscription($id));
         $dataSubscription = $subscription->getSubscription($id);
-        $this->assertInternalType('array', $dataSubscription);
+        $this->assertIsArray($dataSubscription);
         $keys = [
             'id',
             'topic_url',
@@ -78,8 +78,9 @@ class SubscriptionTest extends TestCase
 
     protected function initDb()
     {
-        if (! extension_loaded('pdo')
-            || ! in_array('sqlite', PDO::getAvailableDrivers())
+        if (
+            !extension_loaded('pdo')
+            || !in_array('sqlite', PDO::getAvailableDrivers())
         ) {
             $this->markTestSkipped('Test only with pdo_sqlite');
         }
