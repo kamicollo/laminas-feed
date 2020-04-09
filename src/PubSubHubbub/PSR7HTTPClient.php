@@ -9,8 +9,10 @@ use Laminas\Psr7Bridge\Psr7ServerRequest;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Laminas\Feed\PubSubHubbub\PSR7ClientInterface;
+use Laminas\Http\Response;
+use Psr\Http\Message\ResponseFactoryInterface;
 
-class PSR7HTTPClient implements PSR7ClientInterface
+class PSR7HTTPClient implements PSR7ClientInterface, ResponseFactoryInterface
 {
     /**
      * Laminas HTTP client
@@ -38,5 +40,12 @@ class PSR7HTTPClient implements PSR7ClientInterface
         $request->setMethod($method)->setUri($uri);
         $psr7request =  Psr7ServerRequest::fromLaminas($request);
         return $psr7request;
+    }
+
+    public function createResponse(int $code = 200, string $reasonPhrase = ''): ResponseInterface
+    {
+        $response = new Response();
+        $response->setStatusCode($code)->setReasonPhrase($reasonPhrase);
+        return Psr7Response::fromLaminas($response);
     }
 }
