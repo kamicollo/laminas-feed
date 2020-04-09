@@ -347,6 +347,20 @@ class SubscriberTest extends TestCase
         $this->assertEquals(['foo' => 'bar'], $this->subscriber->getHubHeaders('hub1'));
     }
 
+    public function testAddsHubHeadersMultipleHubs()
+    {
+        $this->subscriber->setHubHeader('hub1', 'foo', 'bar');
+        $this->subscriber->setHubHeader('hub2', 'foo', 'baz');
+        $this->assertEquals(['foo' => 'bar'], $this->subscriber->getHubHeaders('hub1'));
+    }
+
+    public function testAddsHubHeaderMultipleTimes()
+    {
+        $this->subscriber->setHubHeaders('hub1', ['foo' => 'bar']);
+        $this->subscriber->setHubHeaders('hub1', ['bar' => 'baz']);
+        $this->assertEquals(['foo' => 'bar', 'bar' => 'baz'], $this->subscriber->getHubHeaders('hub1'));
+    }
+
     public function testRemovesHubHeader()
     {
         $this->subscriber->setHubHeader('hub', 'foo', 'bar');
@@ -429,6 +443,20 @@ class SubscriberTest extends TestCase
         $this->subscriber->setHubParameter('hub1', 'foo', 'bar');
         $this->subscriber->setHubParameter('hub2', 'foo', 'baz');
         $this->assertEquals(['foo' => 'bar'], $this->subscriber->getHubParameters('hub1'));
+    }
+
+    public function testAddsHubParameterMultipleTimes()
+    {
+        $this->subscriber->setHubParameters('hub1', ['foo' => 'bar']);
+        $this->subscriber->setHubParameters('hub1', ['bar' => 'baz']);
+        $this->assertEquals(['foo' => 'bar', 'bar' => 'baz'], $this->subscriber->getHubParameters('hub1'));
+    }
+
+    public function testOverwritesHubParameterMultipleTimes()
+    {
+        $this->subscriber->setHubParameters('hub1', ['foo' => 'bar']);
+        $this->subscriber->setHubParameters('hub1', ['foo' => 'baz']);
+        $this->assertEquals(['foo' => 'baz'], $this->subscriber->getHubParameters('hub1'));
     }
 
     public function testRemovesHubParameter()
