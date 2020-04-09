@@ -8,11 +8,10 @@
 
 namespace Laminas\Feed\PubSubHubbub;
 
-use DateInterval;
-use DateTime;
+use Laminas\Diactoros\Stream as DiactorosStream;
 use Laminas\Feed\Uri;
-use Laminas\Http\Request as HttpRequest;
 use Laminas\Stdlib\ArrayUtils;
+
 use Traversable;
 
 class Subscriber
@@ -131,6 +130,13 @@ class Subscriber
      * @var string
      */
     protected $usePathParameter = false;
+
+    /**
+     * ]
+     *
+     * @var PSRClientInterface
+     */
+    protected $http_client;
 
     /**
      * Constructor; accepts an array or Traversable instance to preset
@@ -430,14 +436,19 @@ class Subscriber
     /**
      * Add authentication credentials for a given URL
      *
-     * @param  string $url
+     * @param  string $url HubUrl
+     * @param array $authentication array in a form of [user, password]
      * @return $this
      * @throws Exception\InvalidArgumentException
      */
     public function addAuthentication($url, array $authentication)
     {
         $this->_validateUrl($url, "url");
-        $this->setHubHeader($url, 'auth', $authentication);
+        $this->setHubHeader(
+            $url,
+            'Authorization',
+            'Basic ' . base64_encode($authentication[0] . ':' . $authentication[1])
+        );
         return $this;
     }
 
@@ -479,8 +490,10 @@ class Subscriber
     public function getAuthentication($hubUrl)
     {
         $headers = $this->getHubHeaders($hubUrl);
-        if (array_key_exists('auth', $headers)) {
-            return $headers['auth'];
+        if (array_key_exists('Authorization', $headers)) {
+            $value = $headers['Authorization'];
+            $string = base64_decode(str_replace('Basic ', "", $value));
+            return explode(":", $string);
         } else {
             return null;
         }
@@ -661,6 +674,7 @@ class Subscriber
     {
         // @codingStandardsIgnoreEnd
         $client = $this->_getHttpClient();
+
         $hubs   = $this->getHubUrls();
         if (empty($hubs)) {
             throw new Exception\RuntimeException(
@@ -670,27 +684,36 @@ class Subscriber
         $this->errors    = [];
         $this->asyncHubs = [];
         foreach ($hubs as $url) {
-            $hub_headers = $this->getHubHeaders($url);
-            if (array_key_exists('auth', $hub_headers)) {
-                $auth = $hub_headers['auth'];
-                $client->setAuth($auth[0], $auth[1]);
-            }
+
+
             //get params
             $params = $this->_getRequestParameters($url, $mode);
 
-            //construct request
-            $client->setUri($url);
-            $client->setRawBody(
-                $this->_toByteValueOrderedString(
-                    $this->_urlEncode($params)
-                )
+            //create request
+            $request = $client->createRequest(
+                'POST',
+                $url
             );
+
+            $stream = fopen('php://memory', 'w+');
+            fwrite($stream, $this->_toByteValueOrderedString(
+                $this->_urlEncode($params)
+            ));
+            $request = $request->withBody(new DiactorosStream($stream));
+
+            //set headers
+            //get all headers
+            $headers = array_merge($this->getHeaders(), $this->getHubHeaders($url));
+
+            foreach ($headers as $name => $value) {
+                $request = $request->withHeader($name, $value);
+            }
 
             // store subscription to storage
             $this->saveSubscriptionState($mode, $url, $params);
 
             //execute request
-            $response = $client->send();
+            $response = $client->sendRequest($request);
             if (
                 $response->getStatusCode() !== 204
                 && $response->getStatusCode() !== 202
@@ -719,18 +742,23 @@ class Subscriber
     /**
      * Get a basic prepared HTTP client for use
      *
-     * @return \Laminas\Http\Client
+     * @return PSR7HTTPClient
      */
     // @codingStandardsIgnoreStart
     protected function _getHttpClient()
     {
         // @codingStandardsIgnoreEnd
-        $client = PubSubHubbub::getHttpClient();
-        $client->setMethod(HttpRequest::METHOD_POST);
-        $client->setOptions([
-            'useragent' => 'Laminas_Feed_Pubsubhubbub_Subscriber/' . Version::VERSION,
-        ]);
-        return $client;
+        if ($this->http_client === null) {
+            $client = PubSubHubbub::getHttpClient();
+            $this->setHTTPClient(new PSR7HTTPClient($client));
+        }
+
+        return $this->http_client;
+    }
+
+    public function setHTTPClient(PSR7ClientInterface $client)
+    {
+        $this->http_client = $client;
     }
 
     /**
@@ -789,13 +817,18 @@ class Subscriber
             $params['hub.callback'] = rtrim($this->getCallbackUrl(), '/')
                 . '/' . PubSubHubbub::urlencode($key);
         }
-        if ($mode === 'subscribe') {
+        if (($mode === 'subscribe')  && ($this->leaseSeconds !== null)) {
             $params['hub.lease_seconds'] = $this->getLeaseSeconds();
         }
 
         // hub.secret not currently supported
         $optParams = $this->getParameters();
         foreach ($optParams as $name => $value) {
+            $params[$name] = $value;
+        }
+
+        $hubParams = $this->getHubParameters($hubUrl);
+        foreach ($hubParams as $name => $value) {
             $params[$name] = $value;
         }
 

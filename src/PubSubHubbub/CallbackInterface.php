@@ -8,6 +8,8 @@
 
 namespace Laminas\Feed\PubSubHubbub;
 
+use Psr\Http\Message\ResponseInterface;
+
 interface CallbackInterface
 {
     /**
@@ -35,16 +37,16 @@ interface CallbackInterface
      * Laminas\Feed\Pubsubhubbub\HttpResponse which shares an unenforced interface with
      * (i.e. not inherited from) Laminas\Feed\Pubsubhubbub\AbstractCallback.
      *
-     * @param HttpResponse|\Laminas\Http\PhpEnvironment\Response $httpResponse
+     * @param ResponseInterface $httpResponse
      */
-    public function setHttpResponse($httpResponse);
+    public function setHttpResponse(ResponseInterface $httpResponse);
 
     /**
      * An instance of a class handling Http Responses. This is implemented in
      * Laminas\Feed\Pubsubhubbub\HttpResponse which shares an unenforced interface with
      * (i.e. not inherited from) Laminas\Feed\Pubsubhubbub\AbstractCallback.
      *
-     * @return HttpResponse|\Laminas\Http\PhpEnvironment\Response
+     * @return ResponseInterface
      */
     public function getHttpResponse();
 }

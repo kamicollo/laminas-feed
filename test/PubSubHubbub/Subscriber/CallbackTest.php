@@ -16,13 +16,16 @@ use Laminas\Db\ResultSet\ResultSet;
 use Laminas\Db\TableGateway\TableGateway;
 use Laminas\Feed\PubSubHubbub\AbstractCallback;
 use Laminas\Feed\PubSubHubbub\Exception\ExceptionInterface;
-use Laminas\Feed\PubSubHubbub\HttpResponse;
 use Laminas\Feed\PubSubHubbub\Model;
+use Laminas\Feed\PubSubHubbub\PSR7HTTPClient;
+use Laminas\Feed\PubSubHubbub\PubSubHubbub;
 use Laminas\Feed\PubSubHubbub\Subscriber\Callback as CallbackSubscriber;
 use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\ResponseInterface;
 use ReflectionClass;
 use ReflectionProperty;
 use stdClass;
+use TypeError;
 
 /**
  * @group Laminas_Feed
@@ -104,24 +107,26 @@ class CallbackTest extends TestCase
 
     public function testCanSetHttpResponseObject()
     {
-        $this->_callback->setHttpResponse(new HttpResponse());
-        $this->assertInstanceOf(HttpResponse::class, $this->_callback->getHttpResponse());
+        $client = new PSR7HTTPClient(PubSubHubbub::getHttpClient());
+        $response = $client->createResponse();
+        $this->_callback->setHttpResponse($response);
+        $this->assertInstanceOf(ResponseInterface::class, $this->_callback->getHttpResponse());
     }
 
     public function testCanUsesDefaultHttpResponseObject()
     {
-        $this->assertInstanceOf(HttpResponse::class, $this->_callback->getHttpResponse());
+        $this->assertInstanceOf(ResponseInterface::class, $this->_callback->getHttpResponse());
     }
 
     public function testThrowsExceptionOnInvalidHttpResponseObjectSet()
     {
-        $this->expectException(ExceptionInterface::class);
+        $this->expectException(TypeError::class);
         $this->_callback->setHttpResponse(new stdClass());
     }
 
     public function testThrowsExceptionIfNonObjectSetAsHttpResponseObject()
     {
-        $this->expectException(ExceptionInterface::class);
+        $this->expectException(TypeError::class);
         $this->_callback->setHttpResponse('');
     }
 
@@ -352,7 +357,7 @@ class CallbackTest extends TestCase
             );
 
         $this->_callback->handle($this->_get);
-        $this->assertEquals('abc', $this->_callback->getHttpResponse()->getContent());
+        $this->assertEquals('abc', $this->_callback->getHttpResponse()->getBody());
     }
 
     public function testRespondsToValidFeedUpdateRequestWith200Response()
@@ -489,7 +494,7 @@ class CallbackTest extends TestCase
             ->will($this->returnValue(1));
 
         $this->_callback->handle([]);
-        $this->assertEquals(1, $this->_callback->getHttpResponse()->getHeader('X-Hub-On-Behalf-Of'));
+        $this->assertEquals(1, $this->_callback->getHttpResponse()->getHeader('X-Hub-On-Behalf-Of')[0]);
     }
 
     // @codingStandardsIgnoreStart

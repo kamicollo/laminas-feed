@@ -10,6 +10,7 @@ namespace Laminas\Feed\PubSubHubbub\Subscriber;
 
 use Laminas\Feed\PubSubHubbub;
 use Laminas\Feed\PubSubHubbub\Exception;
+use Laminas\Diactoros\Stream as DiactorosStream;
 use Laminas\Feed\Uri;
 
 class Callback extends PubSubHubbub\AbstractCallback
@@ -74,7 +75,8 @@ class Callback extends PubSubHubbub\AbstractCallback
          * to avoid holding up responses to the Hub.
          */
         $contentType = $this->_getHeader('Content-Type');
-        if (strtolower($_SERVER['REQUEST_METHOD']) === 'post'
+        if (
+            strtolower($_SERVER['REQUEST_METHOD']) === 'post'
             && $this->_hasValidVerifyToken(null, false)
             && (stripos($contentType, 'application/atom+xml') === 0
                 || stripos($contentType, 'application/rss+xml') === 0
@@ -83,12 +85,26 @@ class Callback extends PubSubHubbub\AbstractCallback
                 || stripos($contentType, 'application/rdf+xml') === 0)
         ) {
             $this->setFeedUpdate($this->_getRawBody());
-            $this->getHttpResponse()->setHeader('X-Hub-On-Behalf-Of', $this->getSubscriberCount());
-        /**
-         * Handle any (un)subscribe confirmation requests
-         */
+
+            $this->setHttpResponse(
+                $this->getHttpResponse()->withAddedHeader(
+                    'X-Hub-On-Behalf-Of',
+                    $this->getSubscriberCount()
+                )
+            );
+
+            /**
+             * Handle any (un)subscribe confirmation requests
+             */
         } elseif ($this->isValidHubVerification($httpGetData)) {
-            $this->getHttpResponse()->setContent($httpGetData['hub_challenge']);
+
+            $stream = fopen('php://memory', 'w+');
+            fwrite($stream, $httpGetData['hub_challenge']);
+
+            $this->setHttpResponse(
+                $this->getHttpResponse()
+                    ->withBody(new DiactorosStream($stream))
+            );
 
             switch (strtolower($httpGetData['hub_mode'])) {
                 case 'subscribe':
@@ -109,11 +125,13 @@ class Callback extends PubSubHubbub\AbstractCallback
                         $httpGetData['hub_mode']
                     ));
             }
-        /**
-         * Hey, C'mon! We tried everything else!
-         */
+            /**
+             * Hey, C'mon! We tried everything else!
+             */
         } else {
-            $this->getHttpResponse()->setStatusCode(404);
+            $this->setHttpResponse(
+                $this->getHttpResponse()->withStatus(404)
+            );
         }
 
         if ($sendResponseNow) {
@@ -145,21 +163,23 @@ class Callback extends PubSubHubbub\AbstractCallback
             'hub_verify_token',
         ];
         foreach ($required as $key) {
-            if (! array_key_exists($key, $httpGetData)) {
+            if (!array_key_exists($key, $httpGetData)) {
                 return false;
             }
         }
-        if ($httpGetData['hub_mode'] !== 'subscribe'
+        if (
+            $httpGetData['hub_mode'] !== 'subscribe'
             && $httpGetData['hub_mode'] !== 'unsubscribe'
         ) {
             return false;
         }
-        if ($httpGetData['hub_mode'] === 'subscribe'
-            && ! array_key_exists('hub_lease_seconds', $httpGetData)
+        if (
+            $httpGetData['hub_mode'] === 'subscribe'
+            && !array_key_exists('hub_lease_seconds', $httpGetData)
         ) {
             return false;
         }
-        if (! Uri::factory($httpGetData['hub_topic'])->isValid()) {
+        if (!Uri::factory($httpGetData['hub_topic'])->isValid()) {
             return false;
         }
 
@@ -167,7 +187,7 @@ class Callback extends PubSubHubbub\AbstractCallback
          * Attempt to retrieve any Verification Token Key attached to Callback
          * URL's path by our Subscriber implementation
          */
-        if (! $this->_hasValidVerifyToken($httpGetData)) {
+        if (!$this->_hasValidVerifyToken($httpGetData)) {
             return false;
         }
         return true;
@@ -227,7 +247,7 @@ class Callback extends PubSubHubbub\AbstractCallback
             return false;
         }
         $verifyTokenExists = $this->getStorage()->hasSubscription($verifyTokenKey);
-        if (! $verifyTokenExists) {
+        if (!$verifyTokenExists) {
             return false;
         }
         if ($checkValue) {
@@ -264,7 +284,8 @@ class Callback extends PubSubHubbub\AbstractCallback
         /**
          * Available only if allowed by PuSH 0.2 Hubs
          */
-        if (is_array($httpGetData)
+        if (
+            is_array($httpGetData)
             && isset($httpGetData['xhub_subscription'])
         ) {
             return $httpGetData['xhub_subscription'];

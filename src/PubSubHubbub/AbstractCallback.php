@@ -8,8 +8,9 @@
 
 namespace Laminas\Feed\PubSubHubbub;
 
-use Laminas\Http\PhpEnvironment\Response as PhpResponse;
 use Laminas\Stdlib\ArrayUtils;
+use Psr\Http\Message\ResponseFactoryInterface;
+use Psr\Http\Message\ResponseInterface;
 use Traversable;
 
 abstract class AbstractCallback implements CallbackInterface
@@ -24,13 +25,18 @@ abstract class AbstractCallback implements CallbackInterface
     protected $storage;
 
     /**
-     * An instance of a class handling Http Responses. This is implemented in
-     * Laminas\Feed\Pubsubhubbub\HttpResponse which shares an unenforced interface with
-     * (i.e. not inherited from) Laminas\Controller\Response\Http.
+     * An instance of a class handling Http Responses. PSR-7 compatible.
      *
-     * @var HttpResponse|PhpResponse
+     * @var ResponseInterface
      */
     protected $httpResponse;
+
+    /**
+     * Response Factory (usually the HTTP Client)
+     *
+     * @var ResponseFactoryInterface
+     */
+    protected $http_client;
 
     /**
      * The input stream to use when retrieving the request body. Defaults to
@@ -77,7 +83,7 @@ abstract class AbstractCallback implements CallbackInterface
             $options = ArrayUtils::iteratorToArray($options);
         }
 
-        if (! is_array($options)) {
+        if (!is_array($options)) {
             throw new Exception\InvalidArgumentException(
                 'Array or Traversable object expected, got ' . gettype($options)
             );
@@ -94,16 +100,70 @@ abstract class AbstractCallback implements CallbackInterface
     }
 
     /**
-     * Send the response, including all headers.
-     * If you wish to handle this via Laminas\Http, use the getter methods
-     * to retrieve any data needed to be set on your HTTP Response object, or
-     * simply give this object the HTTP Response instance to work with for you!
-     *
+     * Send the response, including all headers.    
+     *     
      * @return void
      */
     public function sendResponse()
     {
-        $this->getHttpResponse()->send();
+        $this->sendHeaders();
+        echo $this->getHttpResponse()->getBody();
+    }
+
+    /**
+     * Sends HTTP headers
+     *
+     * @return void
+     */
+    protected function sendHeaders()
+    {
+        $headers = $this->getHttpResponse()->getHeaders();
+        $status_code = $this->getHttpResponse()->getStatusCode();
+
+        if (empty($headers) && (200 == $status_code)) {
+            //if empty headers & 200 code - do nothing
+            return;
+        }
+        //check if headers not yet sent, raise an error otherwise
+        $this->canSendHeaders(true);
+        $httpCodeSent = false;
+
+        //send headers
+        foreach ($headers as $name => $values) {
+            foreach ($values as $value) {
+                if (!$httpCodeSent && !empty($status_code)) {
+                    header(sprintf('%s: %s', $name, $value), false, $status_code);
+                } else {
+                    header(sprintf('%s: %s', $name, $value), false);
+                }
+            }
+        }
+        if (!$httpCodeSent) {
+            header(
+                'HTTP/'
+                    . $this->getHttpResponse()->getProtocolVersion()
+                    . ' '
+                    . $this->getHttpResponse()->getStatusCode()
+            );
+        }
+    }
+
+    /**
+     * Can we send headers?
+     *
+     * @param  bool $throw Whether or not to throw an exception if headers have been sent; defaults to false
+     * @return bool
+     * @throws Exception\RuntimeException
+     */
+    public function canSendHeaders($throw = false)
+    {
+        $ok = headers_sent($file, $line);
+        if ($ok && $throw) {
+            throw new Exception\RuntimeException(
+                'Cannot send headers; headers already sent in ' . $file . ', line ' . $line
+            );
+        }
+        return !$ok;
     }
 
     /**
@@ -132,30 +192,20 @@ abstract class AbstractCallback implements CallbackInterface
         if ($this->storage === null) {
             throw new Exception\RuntimeException(
                 'No storage object has been set that subclasses'
-                . ' Laminas\Feed\Pubsubhubbub\Model\SubscriptionPersistence'
+                    . ' Laminas\Feed\Pubsubhubbub\Model\SubscriptionPersistence'
             );
         }
         return $this->storage;
     }
 
     /**
-     * An instance of a class handling Http Responses. This is implemented in
-     * Laminas\Feed\Pubsubhubbub\HttpResponse which shares an unenforced interface with
-     * (i.e. not inherited from) Laminas\Controller\Response\Http.
+     * An instance of a class handling Http Responses. PSR-7 compatible.
      *
-     * @param  HttpResponse|PhpResponse $httpResponse
-     * @return $this
-     * @throws Exception\InvalidArgumentException
+     * @param  ResponseInterface $httpResponse
+     * @return $this     
      */
-    public function setHttpResponse($httpResponse)
+    public function setHttpResponse(ResponseInterface $httpResponse)
     {
-        if (! $httpResponse instanceof HttpResponse && ! $httpResponse instanceof PhpResponse) {
-            throw new Exception\InvalidArgumentException(
-                'HTTP Response object must'
-                . ' implement one of Laminas\Feed\Pubsubhubbub\HttpResponse or'
-                . ' Laminas\Http\PhpEnvironment\Response'
-            );
-        }
         $this->httpResponse = $httpResponse;
         return $this;
     }
@@ -165,14 +215,40 @@ abstract class AbstractCallback implements CallbackInterface
      * Laminas\Feed\Pubsubhubbub\HttpResponse which shares an unenforced interface with
      * (i.e. not inherited from) Laminas\Controller\Response\Http.
      *
-     * @return HttpResponse|PhpResponse
+     * @return ResponseInterface
      */
     public function getHttpResponse()
     {
         if ($this->httpResponse === null) {
-            $this->httpResponse = new HttpResponse();
+            $this->httpResponse = $this->getResponseFactory()->createResponse();
         }
         return $this->httpResponse;
+    }
+
+    /**
+     * Set HTTP Response Factory
+     *
+     * @param ResponseFactoryInterface $client
+     * @return void
+     */
+    public function setResponseFactory(ResponseFactoryInterface $client)
+    {
+        $this->http_client = $client;
+    }
+
+    /**
+     * Get HTTP Response Factory
+     *
+     * @return ResponseFactoryInterface
+     */
+    public function getResponseFactory(): ResponseFactoryInterface
+    {
+        if ($this->http_client === null) {
+            $client = PubSubHubbub::getHttpClient();
+            $this->setResponseFactory(new PSR7HTTPClient($client));
+        }
+
+        return $this->http_client;
     }
 
     /**
@@ -190,7 +266,7 @@ abstract class AbstractCallback implements CallbackInterface
         if ($count <= 0) {
             throw new Exception\InvalidArgumentException(
                 'Subscriber count must be'
-                . ' greater than zero'
+                    . ' greater than zero'
             );
         }
         $this->subscriberCount = $count;
@@ -223,7 +299,7 @@ abstract class AbstractCallback implements CallbackInterface
         // (double slash problem).
         $iisUrlRewritten = isset($_SERVER['IIS_WasUrlRewritten']) ? $_SERVER['IIS_WasUrlRewritten'] : null;
         $unencodedUrl    = isset($_SERVER['UNENCODED_URL']) ? $_SERVER['UNENCODED_URL'] : null;
-        if ('1' == $iisUrlRewritten && ! empty($unencodedUrl)) {
+        if ('1' == $iisUrlRewritten && !empty($unencodedUrl)) {
             return $unencodedUrl;
         }
 
@@ -253,7 +329,7 @@ abstract class AbstractCallback implements CallbackInterface
     protected function _getHttpHost()
     {
         // @codingStandardsIgnoreEnd
-        if (! empty($_SERVER['HTTP_HOST'])) {
+        if (!empty($_SERVER['HTTP_HOST'])) {
             return $_SERVER['HTTP_HOST'];
         }
 
@@ -282,16 +358,16 @@ abstract class AbstractCallback implements CallbackInterface
     {
         // @codingStandardsIgnoreEnd
         $temp = strtoupper(str_replace('-', '_', $header));
-        if (! empty($_SERVER[$temp])) {
+        if (!empty($_SERVER[$temp])) {
             return $_SERVER[$temp];
         }
         $temp = 'HTTP_' . strtoupper(str_replace('-', '_', $header));
-        if (! empty($_SERVER[$temp])) {
+        if (!empty($_SERVER[$temp])) {
             return $_SERVER[$temp];
         }
         if (function_exists('apache_request_headers')) {
             $headers = apache_request_headers();
-            if (! empty($headers[$header])) {
+            if (!empty($headers[$header])) {
                 return $headers[$header];
             }
         }
@@ -342,7 +418,7 @@ abstract class AbstractCallback implements CallbackInterface
     private function buildCallbackUrlFromOrigPathInfo()
     {
         $callbackUrl = $_SERVER['ORIG_PATH_INFO'];
-        if (! empty($_SERVER['QUERY_STRING'])) {
+        if (!empty($_SERVER['QUERY_STRING'])) {
             $callbackUrl .= '?' . $_SERVER['QUERY_STRING'];
         }
         return $callbackUrl;
