@@ -9,6 +9,7 @@
 namespace Laminas\Feed\PubSubHubbub;
 
 use Laminas\Diactoros\Stream as DiactorosStream;
+use Laminas\Feed\PubSubHubbub\Exception\InvalidArgumentException;
 use Laminas\Feed\Uri;
 use Laminas\Stdlib\ArrayUtils;
 
@@ -106,6 +107,13 @@ class Subscriber
      * @var array
      */
     protected $hub_headers = [];
+
+    /**
+     * Hub-specific list of secrets to be applied to each request
+     *
+     * @var array
+     */
+    protected $hub_secrets = [];
 
     /**
      * List of headers to be applied to each request for every hub
@@ -251,8 +259,8 @@ class Subscriber
     {
         if (empty($string) || !is_string($string)) {
             throw new Exception\InvalidArgumentException(
-                'Invalid parameter "' . $name . '" of "' . $string .
-                    '" must be a non-empty string'
+                'Invalid parameter "' . $name . '" of ' .
+                    'must be a non-empty string'
             );
         }
         return true;
@@ -526,6 +534,13 @@ class Subscriber
             return $this;
         }
         $this->_validateString($name, "name");
+
+        if ($name == 'hub.secret') {
+            throw new InvalidArgumentException(
+                'Hub secrets should be set through a dedicated setHubSecret() method. ' .
+                    'Shared secrets are not allowed.'
+            );
+        }
 
         if ($value === null) {
             $this->removeParameter($name);
@@ -821,7 +836,12 @@ class Subscriber
             $params['hub.lease_seconds'] = $this->getLeaseSeconds();
         }
 
-        // hub.secret not currently supported
+        // hub.secret
+        $secret = $this->getHubSecret($hubUrl);
+        if (($secret !== null) && $mode == 'subscribe') {
+            $params['hub.secret'] = $secret;
+        }
+
         $optParams = $this->getParameters();
         foreach ($optParams as $name => $value) {
             $params[$name] = $value;
@@ -929,29 +949,34 @@ class Subscriber
      */
     protected function saveSubscriptionState($mode, $hubUrl, $params)
     {
-
-        $now     = new \DateTimeImmutable();
-        $expires = null;
-        if (!array_key_exists('hub.lease_seconds', $params)) {
-            $params['hub.lease_seconds'] = null;
-        }
-        if ($params['hub.lease_seconds'] !== null) {
-            $expires = $now->add(new \DateInterval('PT' . $params['hub.lease_seconds'] . 'S'))
-                ->format('Y-m-d H:i:s');
-        }
         $data = [
             'id'              => $this->_generateSubscriptionKey($params['hub.topic'], $hubUrl),
             'topic_url'       => $params['hub.topic'],
             'hub_url'         => $hubUrl,
-            'created_time'    => $now->format('Y-m-d H:i:s'),
-            'lease_seconds'   => $params['hub.lease_seconds'],
             'verify_token'    => hash('sha256', $params['hub.verify_token']),
-            'secret'          => null,
-            'expiration_time' => $expires,
             // @codingStandardsIgnoreStart
             'subscription_state' => ($mode == 'unsubscribe') ? PubSubHubbub::SUBSCRIPTION_TODELETE : PubSubHubbub::SUBSCRIPTION_NOTVERIFIED,
             // @codingStandardsIgnoreEnd
         ];
+
+        if ($mode == 'subscribe') {
+            $now     = new \DateTimeImmutable();
+            $expires = null;
+            if (!array_key_exists('hub.lease_seconds', $params)) {
+                $params['hub.lease_seconds'] = null;
+            }
+            if ($params['hub.lease_seconds'] !== null) {
+                $expires = $now->add(new \DateInterval('PT' . $params['hub.lease_seconds'] . 'S'))
+                    ->format('Y-m-d H:i:s');
+            }
+
+            $data = array_merge($data, [
+                'created_time'    => $now->format('Y-m-d H:i:s'),
+                'lease_seconds'   => $params['hub.lease_seconds'],
+                'secret'          => $this->getHubSecret($hubUrl),
+                'expiration_time' => $expires,
+            ]);
+        }
 
         $this->getStorage()->setSubscription($data);
     }
@@ -1072,6 +1097,12 @@ class Subscriber
     {
         $this->_validateUrl($hubUrl, 'hubUrl');
         $this->_validateString($parameter, 'parameter');
+
+        if ($parameter == 'hub.secret') {
+            throw new InvalidArgumentException(
+                'Hub secrets should be set through a dedicated setHubSecret() method'
+            );
+        }
 
         if ($value === null) {
             $this->removeHubParameter($hubUrl, $parameter);
@@ -1237,5 +1268,58 @@ class Subscriber
     final public function setTestStaticToken($token)
     {
         $this->testStaticToken = (string) $token;
+    }
+
+    /**
+     * Set a hub secret for a given Hub URL
+     *
+     * @param  string $hubUrl
+     * @param  string $secret     
+     * @return $this
+     * @throws Exception\InvalidArgumentException
+     */
+    public function setHubSecret($hubUrl, $secret)
+    {
+        $this->_validateUrl($hubUrl, 'hubUrl');
+
+        if ($secret === null) {
+            $this->removeHubSecret($hubUrl);
+        } else {
+            $this->_validateString($secret, 'secret');
+            $this->hub_secrets[$hubUrl] = $secret;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Remove a hub secret for a given Hub URL
+     *
+     * @param  string $hubUrl     
+     * @return $this
+     * @throws Exception\InvalidArgumentException
+     */
+    public function removeHubSecret($hubUrl)
+    {
+        $this->_validateUrl($hubUrl, "hubUrl");
+        if (array_key_exists($hubUrl, $this->hub_secrets)) {
+            unset($this->hub_secrets[$hubUrl]);
+        }
+        return $this;
+    }
+
+    /**
+     * Get hub secret for a given Hub URL
+     *
+     * @param  string $url
+     * @return string|null     
+     */
+    public function getHubSecret($hubUrl)
+    {
+        if (array_key_exists($hubUrl, $this->hub_secrets)) {
+            return $this->hub_secrets[$hubUrl];
+        } else {
+            return null;
+        }
     }
 }

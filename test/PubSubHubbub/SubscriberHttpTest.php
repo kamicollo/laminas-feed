@@ -129,6 +129,31 @@ class SubscriberHttpTest extends TestCase
         $this->subscriber->setTopicUrl('http://www.example.com/topic');
         $this->subscriber->addHubUrl($this->baseuri . '/testRawPostData.php');
         $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->setLeaseSeconds(2592000);
+        $token = md5('http://www.example.com/topic' . $this->baseuri . '/testRawPostData.php');
+        $this->subscriber->setTestStaticToken('abc'); // override for testing
+        $this->subscriber->subscribeAll();
+
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $this->subscriber->addHubUrl($this->baseuri . '/testRawPostData.php');
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $token = md5('http://www.example.com/topic' . $this->baseuri . '/testRawPostData.php');
+        $this->subscriber->setTestStaticToken('abc'); //override for testing
+        $this->subscriber->unsubscribeAll();
+        $this->assertEquals(
+            'hub.callback=http%3A%2F%2Fwww.example.com%2Fcallback%3Fxhub.subscription%3D' . $token
+                . '&hub.mode=unsubscribe&hub.topic=http'
+                . '%3A%2F%2Fwww.example.com%2Ftopic&hub.verify=sync&hub.verify=async'
+                . '&hub.verify_token=abc',
+            $this->client->getResponse()->getBody()
+        );
+    }
+
+    public function testSubscriptionUnsubscriptionRequestSendsExpectedPostData()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $this->subscriber->addHubUrl($this->baseuri . '/testRawPostData.php');
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
         $token = md5('http://www.example.com/topic' . $this->baseuri . '/testRawPostData.php');
         $this->subscriber->setTestStaticToken('abc'); //override for testing
         $this->subscriber->unsubscribeAll();
@@ -267,6 +292,26 @@ class SubscriberHttpTest extends TestCase
         $this->subscriber->subscribeAll();
         $headers = json_decode($this->client->getResponse()->getBody(), true);
         $this->assertArrayNotHasKey('foo', $headers);
+    }
+
+    public function testSubscriptionRequestSendsHubSecretExpectedPostData()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $hubUrl = $this->baseuri . '/testRawPostData.php';
+        $this->subscriber->addHubUrl($hubUrl);
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->usePathParameter(false);
+        $this->subscriber->setHubSecret($hubUrl, 'mysecret');
+        $token = md5('http://www.example.com/topic' . $hubUrl);
+        $this->subscriber->setTestStaticToken('abc'); // override for testing
+        $this->subscriber->subscribeAll();
+        $this->assertEquals(
+            'hub.callback=http%3A%2F%2Fwww.example.com%2Fcallback%3Fxhub.subscription%3D' . $token
+                . '&hub.mode='
+                . 'subscribe&hub.secret=mysecret&hub.topic=http%3A%2F%2Fwww.example.com%2Ftopic&hub.veri'
+                . 'fy=sync&hub.verify=async&hub.verify_token=abc',
+            $this->client->getResponse()->getBody()
+        );
     }
 
     // @codingStandardsIgnoreStart

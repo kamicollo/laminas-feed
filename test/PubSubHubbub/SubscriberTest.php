@@ -8,13 +8,17 @@
 
 namespace LaminasTest\Feed\PubSubHubbub;
 
+use DateInterval;
+use DateTime;
 use Laminas\Db\Adapter\Adapter;
 use Laminas\Db\TableGateway\TableGateway;
 use Laminas\Feed\PubSubHubbub\Exception\ExceptionInterface;
+use Laminas\Feed\PubSubHubbub\Exception\InvalidArgumentException;
 use Laminas\Feed\PubSubHubbub\Model\Subscription;
 use Laminas\Feed\PubSubHubbub\PubSubHubbub;
 use Laminas\Feed\PubSubHubbub\Subscriber;
 use Laminas\Http\Client as HttpClient;
+use PDO;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 
@@ -564,5 +568,72 @@ class SubscriberTest extends TestCase
             'foo' => 'bar',
             'boo' => 'baz',
         ], $this->subscriber->getHeaders());
+    }
+
+    public function testAddsHubSecret()
+    {
+        $this->subscriber->setHubSecret('hub', 'foobar');
+        $this->assertEquals('foobar', $this->subscriber->getHubSecret('hub'));
+    }
+
+    public function testAddsSecretsMultipleHubs()
+    {
+        $this->subscriber->setHubSecret('hub1', 'foobar');
+        $this->subscriber->setHubSecret('hub2', 'foobaz');
+        $this->assertEquals('foobar', $this->subscriber->getHubSecret('hub1'));
+        $this->assertEquals('foobaz', $this->subscriber->getHubSecret('hub2'));
+    }
+
+    public function testOverwritesHubSecretMultipleTimes()
+    {
+        $this->subscriber->setHubSecret('hub1', 'foobar');
+        $this->subscriber->setHubSecret('hub1', 'barbaz');
+        $this->assertEquals('barbaz', $this->subscriber->getHubSecret('hub1'));
+    }
+
+    public function testRemovesHubSecret()
+    {
+        $this->subscriber->setHubSecret('hub', 'foobar');
+        $this->subscriber->removeHubSecret('hub');
+        $this->assertEquals(null, $this->subscriber->getHubSecret('hub'));
+    }
+
+    public function testAddInvalidHubSecret()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->subscriber->setHubSecret('hub', 123);
+    }
+
+    public function testAddInvalidHubSecretEmpty()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->subscriber->setHubSecret('hub', '');
+    }
+
+    public function testAddInvalidHubSecretArray()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->subscriber->setHubSecret('hub', []);
+    }
+
+    public function testRemovesHubSecretByNull()
+    {
+        $this->subscriber->setHubSecret('hub', 'bar');
+        $this->subscriber->setHubSecret('hub', null);
+        $this->assertEquals(null, $this->subscriber->getHubSecret('hub'));
+    }
+
+    public function testSetHubSecretShared()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->subscriber->setParameter('hub.secret', 'bar');
+        $this->assertEquals([], $this->subscriber->getParameters());
+    }
+
+    public function testSetHubSecret()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->subscriber->setHubParameter('hub', 'hub.secret', 'bar');
+        $this->assertEquals([], $this->subscriber->getHubParameters('hub'));
     }
 }
