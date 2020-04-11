@@ -930,7 +930,7 @@ class Subscriber
     protected function saveSubscriptionState($mode, $hubUrl, $params)
     {
 
-        $now     = new \DateTime();
+        $now     = new \DateTimeImmutable();
         $expires = null;
         if (!array_key_exists('hub.lease_seconds', $params)) {
             $params['hub.lease_seconds'] = null;
