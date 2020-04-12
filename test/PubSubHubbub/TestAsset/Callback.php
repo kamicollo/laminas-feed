@@ -9,13 +9,14 @@
 namespace LaminasTest\Feed\PubSubHubbub\TestAsset;
 
 use Laminas\Feed\PubSubHubbub\AbstractCallback;
+use Psr\Http\Message\ServerRequestInterface;
 
 class Callback extends AbstractCallback
 {
     /**
      * {@inheritDoc}
      */
-    public function handle(array $httpData = null, $sendResponseNow = false)
+    public function handle(ServerRequestInterface $request = null, $sendResponseNow = false)
     {
         return false;
     }
