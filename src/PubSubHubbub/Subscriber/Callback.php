@@ -248,11 +248,6 @@ class Callback extends \Laminas\Feed\PubSubHubbub\AbstractCallback
                 ($subscription_state == PubSubHubbub::SUBSCRIPTION_VERIFIED);
         } elseif ($mode == 'unsubscribe') {
             return $subscription_state == PubSubHubbub::SUBSCRIPTION_TODELETE;
-        } else {
-            throw new Exception\RuntimeException(sprintf(
-                'Invalid hub_mode ("%s") provided',
-                $this->getRequest()->getQueryParams()['hub_mode']
-            ));
         }
     }
 
@@ -264,7 +259,7 @@ class Callback extends \Laminas\Feed\PubSubHubbub\AbstractCallback
             $data['subscription_state'] = PubSubHubbub::SUBSCRIPTION_VERIFIED;
             $params = $this->getRequest()->getQueryParams();
             //if lease seconds provided, save them
-            if (isset($params['hub_lease_seconds'])) {
+            if ($params['hub_lease_seconds'] !== null) {
                 $data['lease_seconds'] = $params['hub_lease_seconds'];
                 $created_time = date_create_from_format(
                     'Y-m-d H:i:s',
@@ -290,11 +285,6 @@ class Callback extends \Laminas\Feed\PubSubHubbub\AbstractCallback
             $this->getStorage()->setSubscription($data);
         } elseif ($mode == 'unsubscribe') {
             $this->getStorage()->deleteSubscription($this->subscriptionKey);
-        } else {
-            throw new Exception\RuntimeException(sprintf(
-                'Invalid hub_mode ("%s") provided',
-                $this->getRequest()->getQueryParams()['hub_mode']
-            ));
         }
     }
 
@@ -394,16 +384,12 @@ class Callback extends \Laminas\Feed\PubSubHubbub\AbstractCallback
      * @return bool
      */
     // @codingStandardsIgnoreStart
-    protected function _hasValidVerifyToken($checkValue = true)
+    protected function _hasValidVerifyToken()
     {
-        if ($checkValue) {
-            $verifyToken = $this->currentSubscriptionData['verify_token'];
-            if ($verifyToken !== hash('sha256', $this->getRequest()->getQueryParams()['hub_verify_token'])) {
-                return false;
-            }
-            return true;
-        }
-        return true;
+        $verifyToken = $this->currentSubscriptionData['verify_token'];
+        return ($verifyToken
+            ==
+            hash('sha256', $this->getRequest()->getQueryParams()['hub_verify_token']));
     }
 
     /**

@@ -430,6 +430,29 @@ class CallbackHTTPTest extends TestCase
         $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
     }
 
+    public function testUpdatesDatabaseForReSubscriptionRequestsNoLeaseSeconds()
+    {
+        $db_params = $this->default_db;
+        $db_params['subscription_state'] = PubSubHubbub::SUBSCRIPTION_VERIFIED;
+        $db = $this->_setupDB($db_params);
+
+        $db_params['expiration_time'] = null;
+        $db_params['lease_seconds'] = null;
+
+        $db->expects($this->once())
+            ->method('setSubscription')
+            ->with($this->equalTo($db_params));
+
+        $this->_callback->setStorage($db);
+
+        $params = $this->default_params;
+        $params['hub_lease_seconds'] = null;
+        $request = $this->_setupRequest($params);
+        $this->_callback->handle($request);
+        $this->assertEquals('abc', $this->_callback->getHttpResponse()->getBody());
+        $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
+    }
+
     ######### FEED UPDATE TESTS #############
 
     //do we respond with 200?
