@@ -54,19 +54,11 @@ class CallbackTest extends TestCase
     {
         $this->_callback = new CallbackSubscriber();
 
-        $this->_adapter      = $this->_getCleanMock(
-            Adapter::class
-        );
+
         $this->_tableGateway = $this->_getCleanMock(
             TableGateway::class
         );
-        $this->_rowset       = $this->_getCleanMock(
-            ResultSet::class
-        );
 
-        $this->_tableGateway->expects($this->any())
-            ->method('getAdapter')
-            ->will($this->returnValue($this->_adapter));
         $storage = new Model\Subscription($this->_tableGateway);
 
         $this->now = new DateTime();
