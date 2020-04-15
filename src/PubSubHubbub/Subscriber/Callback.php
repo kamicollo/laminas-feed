@@ -8,17 +8,18 @@
 
 namespace Laminas\Feed\PubSubHubbub\Subscriber;
 
+use DateTimeImmutable;
 use Laminas\Diactoros\ServerRequest;
 use Laminas\Diactoros\ServerRequestFactory;
-use Laminas\Feed\PubSubHubbub;
 use Laminas\Feed\PubSubHubbub\Exception;
 use Laminas\Diactoros\Stream as DiactorosStream;
 use Laminas\Feed\PubSubHubbub\Exception\RuntimeException;
+use Laminas\Feed\PubSubHubbub\PubSubHubbub as PubSubHubbub;
 use Laminas\Feed\Uri;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamInterface;
 
-class Callback extends PubSubHubbub\AbstractCallback
+class Callback extends \Laminas\Feed\PubSubHubbub\AbstractCallback
 {
     /**
      * True if the content sent as updates to the Callback URL is a feed update
@@ -57,6 +58,13 @@ class Callback extends PubSubHubbub\AbstractCallback
      * @var ServerRequestInterface
      */
     protected $request;
+
+    /**
+     * For testing only
+     *
+     * @var DateTimeImmutable
+     */
+    protected $now;
 
     /**
      * Set a subscription key to use for the current callback request manually.
@@ -168,60 +176,26 @@ class Callback extends PubSubHubbub\AbstractCallback
     protected function processVerification()
     {
 
-        /**
-         * Handle any (un)subscribe confirmation requests
-         * @todo Replace exception throw with 404 response for invalid hub modes
-         * @todo review usage of current subscription data across the class
-         */
-        if ($this->isValidHubRequest()) {
-
-            /** @TODO - move to the verification function */
-            if (!$this->_hasValidVerifyToken()) {
-                return false;
-            }
-            /** @TODO END */
-
-            /**
-             * Attempt to retrieve any Verification Token Key attached to Callback
-             * URL's path by our Subscriber implementation
-             */
-
-
-            $stream = fopen('php://memory', 'w+');
-            fwrite($stream, $this->getRequest()->getQueryParams()['hub_challenge']);
-
-            $this->setHttpResponse(
-                $this->getHttpResponse()
-                    ->withBody(new DiactorosStream($stream))->withStatus(200)
-            );
-
-            switch (strtolower($this->getRequest()->getQueryParams()['hub_mode'])) {
-                case 'subscribe':
-                    $data                       = $this->currentSubscriptionData;
-                    $data['subscription_state'] = PubSubHubbub\PubSubHubbub::SUBSCRIPTION_VERIFIED;
-                    if (isset($this->getRequest()->getQueryParams()['hub_lease_seconds'])) {
-                        $data['lease_seconds'] = $this->getRequest()->getQueryParams()['hub_lease_seconds'];
-                    }
-                    $this->getStorage()->setSubscription($data);
-                    break;
-                case 'unsubscribe':
-                    $verifyTokenKey = $this->_detectVerifyTokenKey($this->getRequest()->getQueryParams());
-                    $this->getStorage()->deleteSubscription($verifyTokenKey);
-                    break;
-                default:
-                    throw new Exception\RuntimeException(sprintf(
-                        'Invalid hub_mode ("%s") provided',
-                        $this->getRequest()->getQueryParams()['hub_mode']
-                    ));
-            }
-            /**
-             * Hey, C'mon! We tried everything else!
-             */
-        } else {
-            $this->setHttpResponse(
-                $this->getHttpResponse()->withStatus(404)
-            );
+        if (!$this->isValidHubRequest()) {
+            return;
         }
+        if (!$this->_hasValidVerifyToken()) {
+            return;
+        }
+        $mode = strtolower($this->getRequest()->getQueryParams()['hub_mode']);
+        if (!$this->confirmSubscriptionState($mode)) {
+            return;
+        }
+        $this->saveSubscriptionState($mode);
+
+        $stream = fopen('php://memory', 'w+');
+        fwrite($stream, $this->getRequest()->getQueryParams()['hub_challenge']);
+
+        $this->setHttpResponse(
+            $this->getHttpResponse()
+                ->withStatus(200)
+                ->withBody(new DiactorosStream($stream))
+        );
     }
 
 
@@ -264,6 +238,64 @@ class Callback extends PubSubHubbub\AbstractCallback
             return false;
         }
         return true;
+    }
+
+    protected function confirmSubscriptionState($mode)
+    {
+        $subscription_state = $this->currentSubscriptionData['subscription_state'];
+        if ($mode == 'subscribe') {
+            return ($subscription_state == PubSubHubbub::SUBSCRIPTION_NOTVERIFIED) ||
+                ($subscription_state == PubSubHubbub::SUBSCRIPTION_VERIFIED);
+        } elseif ($mode == 'unsubscribe') {
+            return $subscription_state == PubSubHubbub::SUBSCRIPTION_TODELETE;
+        } else {
+            throw new Exception\RuntimeException(sprintf(
+                'Invalid hub_mode ("%s") provided',
+                $this->getRequest()->getQueryParams()['hub_mode']
+            ));
+        }
+    }
+
+    protected function saveSubscriptionState($mode)
+    {
+        if ($mode == 'subscribe') {
+            $data = $this->currentSubscriptionData;
+            $prior_state = $data['subscription_state'];
+            $data['subscription_state'] = PubSubHubbub::SUBSCRIPTION_VERIFIED;
+            $params = $this->getRequest()->getQueryParams();
+            //if lease seconds provided, save them
+            if (isset($params['hub_lease_seconds'])) {
+                $data['lease_seconds'] = $params['hub_lease_seconds'];
+                $created_time = date_create_from_format(
+                    'Y-m-d H:i:s',
+                    $data['created_time']
+                );
+                //expiration based on created time for new subscriptions
+                if ($prior_state == PubSubHubbub::SUBSCRIPTION_NOTVERIFIED) {
+                    $expires = $created_time->add(
+                        new \DateInterval('PT' . $data['lease_seconds'] . 'S')
+                    )->format('Y-m-d H:i:s');
+                } else {
+                    //expiration based on current time for automatic resubscriptions
+                    $expires = $this->getTimeNow()->add(
+                        new \DateInterval('PT' . $data['lease_seconds'] . 'S')
+                    )->format('Y-m-d H:i:s');
+                }
+
+                $data['expiration_time'] = $expires;
+            } else {
+                $data['lease_seconds'] = null;
+                $data['expiration_time'] = null;
+            }
+            $this->getStorage()->setSubscription($data);
+        } elseif ($mode == 'unsubscribe') {
+            $this->getStorage()->deleteSubscription($this->subscriptionKey);
+        } else {
+            throw new Exception\RuntimeException(sprintf(
+                'Invalid hub_mode ("%s") provided',
+                $this->getRequest()->getQueryParams()['hub_mode']
+            ));
+        }
     }
 
     /**
@@ -405,5 +437,19 @@ class Callback extends PubSubHubbub\AbstractCallback
         }
 
         return false;
+    }
+
+    protected function getTimeNow()
+    {
+        if ($this->now !== null) {
+            return $this->now;
+        } else {
+            return new DateTimeImmutable();
+        }
+    }
+
+    public function setTimeNow(DateTimeImmutable $now)
+    {
+        $this->now = $now;
     }
 }

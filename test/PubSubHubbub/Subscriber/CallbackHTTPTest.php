@@ -8,28 +8,17 @@
 
 namespace LaminasTest\Feed\PubSubHubbub\Subscriber;
 
-use ArrayObject;
 use DateInterval;
-use DateTime;
-use Laminas\Db\Adapter\Adapter;
-use Laminas\Db\ResultSet\ResultSet;
-use Laminas\Db\TableGateway\TableGateway;
+use DateTimeImmutable;
 use Laminas\Diactoros\StreamFactory;
-use Laminas\Feed\PubSubHubbub\AbstractCallback;
-use Laminas\Feed\PubSubHubbub\Exception\ExceptionInterface;
 use Laminas\Feed\PubSubHubbub\Exception\RuntimeException;
-use Laminas\Feed\PubSubHubbub\Model;
-use Laminas\Feed\PubSubHubbub\PSR7HTTPClient;
+use Laminas\Feed\PubSubHubbub\Model\Subscription;
 use Laminas\Feed\PubSubHubbub\PubSubHubbub;
 use Laminas\Feed\PubSubHubbub\Subscriber\Callback as CallbackSubscriber;
 use PHPUnit\Framework\TestCase;
-use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamInterface;
 use ReflectionClass;
-use ReflectionProperty;
-use stdClass;
-use TypeError;
 
 /**
  * @group Laminas_Feed
@@ -39,32 +28,36 @@ class CallbackHTTPTest extends TestCase
 {
     public function setUp(): void
     {
+        $this->now = new DateTimeImmutable();
+        $this->future = $this->now->add(new \DateInterval('P50D'));
+        $this->default_db['created_time'] = $this->now->format('Y-m-d H:i:s');
+
         $this->_callback = new CallbackSubscriber();
-
-        $this->_adapter      = $this->_getCleanMock(
-            Adapter::class
-        );
-        $this->_tableGateway = $this->_getCleanMock(
-            TableGateway::class
-        );
-        $this->_rowset       = $this->_getCleanMock(
-            ResultSet::class
-        );
-
-        $this->_tableGateway->expects($this->any())
-            ->method('getAdapter')
-            ->will($this->returnValue($this->_adapter));
-        $storage = new Model\Subscription($this->_tableGateway);
-
-        $this->now = new DateTime();
-        $storage->setNow(clone $this->now);
-
-        $this->_callback->setStorage($storage);
-
+        $this->_callback->setStorage($this->_setupDB());
         $this->_callback->setRequest($this->_setupRequest());
+        $this->_callback->setSubscriptionKey('subscriptionkey');
 
-        //$_SERVER['QUERY_STRING']   = 'xhub.subscription=verifytokenkey';
+        $this->_callback->setTimeNow($this->future);
     }
+
+    /**
+     * Undocumented variable
+     *
+     * @var DateTimeImmutable
+     */
+    protected $now;
+
+    /**
+     * Undocumented variable
+     *
+     * @var DateTimeImmutable
+     */
+    protected $future;
+
+    /**
+     * @var MockObject
+     */
+    protected $_storage;
 
     /**
      * Undocumented variable
@@ -132,6 +125,50 @@ class CallbackHTTPTest extends TestCase
         return $request;
     }
 
+    protected function getStream($file)
+    {
+        return (new StreamFactory())->createStreamFromFile($file);
+    }
+
+    protected $default_db = [
+        'id'            => 'subscriptionkey',
+        'topic_url'         => 'http://www.example.com/topic',
+        'hub_url'         => 'http://hub.com',
+        'lease_seconds' => null,
+        'subscription_state' => PubSubHubbub::SUBSCRIPTION_NOTVERIFIED,
+        'verify_token' => '6d970874d0db767a7058798973f22cf6589601edab57996312f2ef7b56e5584d',
+        //SHA256 of 'cba'        
+        'created_time'    => null,
+        'secret'          => null,
+        'expiration_time' => null
+    ];
+
+    protected function _setupDB($db_values = [])
+    {
+
+        $storage = $this->_getCleanMock(Subscription::class);
+        $values = array_merge($this->default_db, $db_values);
+
+        $storage->expects($this->any())
+            ->method('getSubscription')
+            ->will($this->returnValueMap(
+                [
+                    [$values['id'], $values],
+                    ['wrongkey', false],
+                ]
+            ));
+
+        $storage->expects($this->any())
+            ->method('hasSubscription')
+            ->will($this->returnValueMap(
+                [
+                    [$values['id'], true],
+                    ['wrongkey', false],
+                ]
+            ));
+        return $storage;
+    }
+
     // @codingStandardsIgnoreStart
     protected function _getCleanMock($className)
     {
@@ -156,275 +193,46 @@ class CallbackHTTPTest extends TestCase
         return $mocked;
     }
 
-    protected function getStream($file)
-    {
-        return (new StreamFactory())->createStreamFromFile($file);
-    }
-
-    protected $default_db = [
-        'id'            => 'subscriptionkey',
-        'topic'         => 'http://www.example.com/topic',
-        'lease_seconds' => '1234567',
-        'verify_token' => '6d970874d0db767a7058798973f22cf6589601edab57996312f2ef7b56e5584d',
-        //SHA256 of 'cba'
-    ];
-
-
-    protected function _setupDB($db_values = [])
-    {
-
-        $mockReturnValue = $this->getMockBuilder('Result')->setMethods(['getArrayCopy'])->getMock();
-
-        $values = array_merge($this->default_db, $db_values);
-        $mockReturnValue->expects($this->any())
-            ->method('getArrayCopy')
-            ->will($this->returnValue($values));
-
-        $this->_tableGateway->expects($this->any())
-            ->method('select')
-            ->will($this->returnValueMap(
-                [
-                    [['id' => $values['id']], $this->_rowset],
-                    [['id' => 'wrongkey'], false],
-                ]
-            ));
-
-
-        $this->_rowset->expects($this->any())
-            ->method('current')
-            ->will($this->returnValue($mockReturnValue));
-
-        // require for the count call on the rowset in Model/Subscription
-        $this->_rowset->expects($this->any())
-            ->method('count')
-            ->will($this->returnValue(1));
-    }
-
     ######### TEST Identification of subscriptions #############
 
     public function testIdentifiesSubscriptionWithKey()
     {
-        $this->_callback->setSubscriptionKey('subscriptionkey');
-        $this->_setupDB();
         $this->assertEquals(true, $this->_callback->setupSubscription());
     }
 
     public function testIdentifiesWrongSubscriptionWithKey()
     {
         $this->_callback->setSubscriptionKey('wrongkey');
-        $this->_setupDB();
         $this->assertEquals(false, $this->_callback->setupSubscription());
     }
 
     public function testMissingSubscriptionIdentifier()
     {
-        $this->_setupDB();
+        $this->_callback->setSubscriptionKey(null);
         $this->expectException(RuntimeException::class);
         $this->assertEquals(true, $this->_callback->setupSubscription());
     }
 
     public function testIdentifiesSubscriptionFromQueryString()
     {
-        $this->_setupDB();
+        $this->_callback->setSubscriptionKey(null);
         $request = $this->_setupRequest(['xhub_subscription' => 'subscriptionkey']);
         $this->_callback->setRequest($request);
         $this->assertEquals(true, $this->_callback->setupSubscription());
     }
 
-    public function testIdentifiesNotExistingSubscription()
+    public function testIdentifiesNotExistingSubscriptionFromQueryString()
     {
-        $this->markTestIncomplete(
-            'Needs review.'
-        );
-        $this->_setupDB();
+        $this->_callback->setSubscriptionKey(null);
+        $request = $this->_setupRequest(['xhub_subscription' => 'wrongkey']);
+        $this->_callback->setRequest($request);
         $this->assertEquals(false, $this->_callback->setupSubscription());
     }
 
-
-
-    ######### SUBSCRIPTION/UNSUBSCRIPTION TESTS #############
-
-    /**
-     * @group Laminas_CONFLICT
-     */
-    public function testValidatesValidHttpGetData()
-    {
-        $this->markTestIncomplete(
-            'Needs review.'
-        );
-
-        $mockReturnValue = $this->getMockBuilder('Result')->setMethods(['getArrayCopy'])->getMock();
-        $mockReturnValue->expects($this->any())
-            ->method('getArrayCopy')
-            ->will($this->returnValue([
-                'verify_token' => hash('sha256', 'cba'),
-            ]));
-
-        $this->_tableGateway->expects($this->any())
-            ->method('select')
-            ->with($this->equalTo(['id' => 'verifytokenkey']))
-            ->will($this->returnValue($this->_rowset));
-        $this->_rowset->expects($this->any())
-            ->method('current')
-            ->will($this->returnValue($mockReturnValue));
-        $this->_rowset->expects($this->any())
-            ->method('count')
-            ->will($this->returnValue(1));
-
-        $this->assertTrue($this->_callback->isValidHubVerification());
-    }
-
-    public function testReturnsFalseIfHubVerificationNotAGetRequest()
-    {
-        $this->markTestIncomplete(
-            'Needs review.'
-        );
-        $request = $this->_setupRequest(null, 'POST');
-        $this->assertFalse($this->_callback->isValidHubVerification($request));
-    }
+    ######### TEST well-formedness of hub verification requests #############
 
     public function testReturnsFalseIfModeMissingFromHttpGetData()
     {
-        $this->markTestIncomplete(
-            'Needs review.'
-        );
-        $params = $this->default_params;
-        unset($params['hub_mode']);
-        $request = $this->_setupRequest($params);
-        $this->_callback->setRequest($request);
-
-        $this->assertFalse($this->_callback->isValidHubVerification());
-    }
-
-    public function testReturnsFalseIfTopicMissingFromHttpGetData()
-    {
-        $this->markTestIncomplete(
-            'Needs review.'
-        );
-        $params = $this->default_params;
-        unset($params['hub_topic']);
-        $request = $this->_setupRequest($params);
-        $this->_callback->setRequest($request);
-
-        $this->assertFalse($this->_callback->isValidHubVerification());
-    }
-
-    public function testReturnsFalseIfChallengeMissingFromHttpGetData()
-    {
-        $this->markTestIncomplete(
-            'Needs review.'
-        );
-        $params = $this->default_params;
-        unset($params['hub_challenge']);
-        $request = $this->_setupRequest($params);
-        $this->_callback->setRequest($request);
-
-        $this->assertFalse($this->_callback->isValidHubVerification());
-    }
-
-    public function testReturnsFalseIfVerifyTokenMissingFromHttpGetData()
-    {
-        $this->markTestIncomplete(
-            'Needs review.'
-        );
-        $params = $this->default_params;
-        unset($params['hub_verify_token']);
-        $request = $this->_setupRequest($params);
-        $this->_callback->setRequest($request);
-
-        $this->assertFalse($this->_callback->isValidHubVerification());
-    }
-
-    public function testReturnsTrueIfModeSetAsUnsubscribeFromHttpGetData()
-    {
-        $this->markTestIncomplete(
-            'Needs review.'
-        );
-        $mockReturnValue = $this->getMockBuilder('Result')->setMethods(['getArrayCopy'])->getMock();
-        $mockReturnValue->expects($this->any())
-            ->method('getArrayCopy')
-            ->will($this->returnValue([
-                'verify_token' => hash('sha256', 'cba'),
-            ]));
-
-
-        $this->_tableGateway->expects($this->any())
-            ->method('select')
-            ->with($this->equalTo(['id' => 'verifytokenkey']))
-            ->will($this->returnValue($this->_rowset));
-        $this->_rowset->expects($this->any())
-            ->method('current')
-            ->will($this->returnValue($mockReturnValue));
-        // require for the count call on the rowset in Model/Subscription
-        $this->_rowset->expects($this->any())
-            ->method('count')
-            ->will($this->returnValue(1));
-
-        $params = $this->default_params;
-        $params['hub_mode'] = 'unsubscribe';
-        $request = $this->_setupRequest($params);
-        $this->_callback->setRequest($request);
-
-        $this->assertTrue($this->_callback->isValidHubVerification());
-    }
-
-    public function testReturnsFalseIfModeNotRecognisedFromHttpGetData()
-    {
-        $this->markTestIncomplete(
-            'Needs review.'
-        );
-        $params = $this->default_params;
-        $params['hub_mode'] = 'abc';
-        $request = $this->_setupRequest($params);
-        $this->_callback->setRequest($request);
-        $this->assertFalse($this->_callback->isValidHubVerification());
-    }
-
-    public function testReturnsFalseIfLeaseSecondsMissedWhenModeIsSubscribeFromHttpGetData()
-    {
-        $this->markTestIncomplete(
-            'Needs review.'
-        );
-        $params = $this->default_params;
-        unset($params['hub_lease_seconds']);
-        $request = $this->_setupRequest($params);
-        $this->_callback->setRequest($request);
-        $this->assertFalse($this->_callback->isValidHubVerification());
-    }
-
-    public function testReturnsFalseIfHubTopicInvalidFromHttpGetData()
-    {
-        $this->markTestIncomplete(
-            'Needs review.'
-        );
-        $params = $this->default_params;
-        $params['hub_topic'] = 'http://';
-        $request = $this->_setupRequest($params);
-        $this->_callback->setRequest($request);
-        $this->assertFalse($this->_callback->isValidHubVerification());
-    }
-
-    public function testReturnsFalseIfVerifyTokenRecordDoesNotExistForConfirmRequest()
-    {
-        $this->markTestIncomplete(
-            'Needs review.'
-        );
-        $this->assertFalse($this->_callback->isValidHubVerification());
-    }
-
-    public function testReturnsFalseIfVerifyTokenRecordDoesNotAgreeWithConfirmRequest()
-    {
-        $this->markTestIncomplete(
-            'Needs review.'
-        );
-        $this->assertFalse($this->_callback->isValidHubVerification());
-    }
-
-    public function testRespondsToInvalidConfirmationWith404Response()
-    {
-        $this->markTestIncomplete(
-            'Needs review.'
-        );
         $params = $this->default_params;
         unset($params['hub_mode']);
         $request = $this->_setupRequest($params);
@@ -432,90 +240,194 @@ class CallbackHTTPTest extends TestCase
         $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
     }
 
-    public function testRespondsToValidConfirmationWith200Response()
+    public function testReturnsFalseIfTopicMissingFromHttpGetData()
     {
+        $params = $this->default_params;
+        unset($params['hub_topic']);
+        $request = $this->_setupRequest($params);
+        $this->_callback->handle($request);
+        $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
+    }
 
-        $this->markTestIncomplete(
-            'Needs review.'
-        );
-        $this->_tableGateway->expects($this->any())
-            ->method('select')
-            ->with($this->equalTo(['id' => 'verifytokenkey']))
-            ->will($this->returnValue($this->_rowset));
+    public function testReturnsFalseIfChallengeMissingFromHttpGetData()
+    {
+        $params = $this->default_params;
+        unset($params['hub_challenge']);
+        $request = $this->_setupRequest($params);
 
-        $t       = clone $this->now;
-        $rowdata = [
-            'id'            => 'verifytokenkey',
-            'verify_token'  => hash('sha256', 'cba'),
-            'created_time'  => $t->getTimestamp(),
-            'lease_seconds' => 10000,
-        ];
+        $this->_callback->handle($request);
+        $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
+    }
 
-        $row = new ArrayObject($rowdata, ArrayObject::ARRAY_AS_PROPS);
+    public function testReturnsFalseIfVerifyTokenMissingFromHttpGetData()
+    {
+        $params = $this->default_params;
+        unset($params['hub_verify_token']);
+        $request = $this->_setupRequest($params);
+        $this->_callback->handle($request);
+        $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
+    }
 
-        $this->_rowset->expects($this->any())
-            ->method('current')
-            ->will($this->returnValue($row));
-        // require for the count call on the rowset in Model/Subscription
-        $this->_rowset->expects($this->any())
-            ->method('count')
-            ->will($this->returnValue(1));
+    public function testReturnsFalseIfModeNotRecognisedFromHttpGetData()
+    {
+        $params = $this->default_params;
+        $params['hub_mode'] = 'abc';
+        $request = $this->_setupRequest($params);
+        $this->_callback->handle($request);
+        $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
+    }
 
-        $this->_tableGateway->expects($this->once())
-            ->method('delete')
-            ->with($this->equalTo(['id' => 'verifytokenkey']))
-            ->will($this->returnValue(true));
+    public function testReturnsFalseIfLeaseSecondsMissedWhenModeIsSubscribeFromHttpGetData()
+    {
+        $params = $this->default_params;
+        unset($params['hub_lease_seconds']);
+        $request = $this->_setupRequest($params);
+        $this->_callback->handle($request);
+        $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
+    }
+
+    ######### TEST that data sent corresponds to our database #############
+
+    public function testReturnsFalseIfVerifyTokenIncorrect()
+    {
+        $params = $this->default_params;
+        $params['hub_verify_token'] = 'wrongtoken';
+        $request = $this->_setupRequest($params);
+        $this->_callback->handle($request);
+        $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
+    }
+
+    public function testReturnsFalseIfHubNotRequestedToSubscribe()
+    {
+        $db_params = $this->default_db;
+        $db_params['subscription_state'] = PubSubHubbub::SUBSCRIPTION_TODELETE;
+        $storage = $this->_setupDB($db_params);
+        $this->_callback->setStorage($storage);
+
+        $params = $this->default_params;
+        $request = $this->_setupRequest($params);
+        $this->_callback->handle($request);
+        $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
+    }
+
+    public function testReturnsFalseIfHubNotRequestedToUnSubscribeToVerify()
+    {
+        $params = $this->default_params;
+        $params['hub_mode'] = 'unsubscribe';
+        $request = $this->_setupRequest($params);
+        $this->_callback->handle($request);
+        $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
+    }
+
+    public function testReturnsFalseIfHubNotRequestedToUnSubscribeVerified()
+    {
+        $db_params = $this->default_db;
+        $db_params['subscription_state'] = PubSubHubbub::SUBSCRIPTION_VERIFIED;
+        $storage = $this->_setupDB($db_params);
+        $this->_callback->setStorage($storage);
 
         $params = $this->default_params;
         $params['hub_mode'] = 'unsubscribe';
-        $this->_callback->handle($this->_setupRequest($params));
+        $request = $this->_setupRequest($params);
+        $this->_callback->handle($request);
+        $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
+    }
+
+    ######### TEST successfull requests #############
+
+    public function testReturns200ForSubscriptionRequest()
+    {
+        $this->_callback->handle();
+        $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals('abc', $this->_callback->getHttpResponse()->getBody());
+    }
+
+    public function testReturns200ForResubscriptionRequest()
+    {
+        $db_params = $this->default_db;
+        $db_params['subscription_state'] = PubSubHubbub::SUBSCRIPTION_VERIFIED;
+        $storage = $this->_setupDB($db_params);
+        $this->_callback->setStorage($storage);
+        $this->_callback->handle();
+        $this->assertEquals('abc', $this->_callback->getHttpResponse()->getBody());
         $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
     }
 
-    public function testRespondsToValidConfirmationWithBodyContainingHubChallenge()
+    public function testReturns200ForUnsubscriptionRequest()
     {
-        $this->markTestIncomplete(
-            'Needs review.'
-        );
-        $this->_tableGateway->expects($this->any())
-            ->method('select')
-            ->with($this->equalTo(['id' => 'verifytokenkey']))
-            ->will($this->returnValue($this->_rowset));
+        $db_params = $this->default_db;
+        $db_params['subscription_state'] = PubSubHubbub::SUBSCRIPTION_TODELETE;
+        $storage = $this->_setupDB($db_params);
+        $this->_callback->setStorage($storage);
 
-        $t       = clone $this->now;
-        $rowdata = [
-            'id'            => 'verifytokenkey',
-            'verify_token'  => hash('sha256', 'cba'),
-            'created_time'  => $t->getTimestamp(),
-            'lease_seconds' => 10000,
-        ];
+        $params = $this->default_params;
+        $params['hub_mode'] = 'unsubscribe';
+        $request = $this->_setupRequest($params);
+        $this->_callback->handle($request);
+        $this->assertEquals('abc', $this->_callback->getHttpResponse()->getBody());
+        $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
+    }
 
-        $row = new ArrayObject($rowdata, ArrayObject::ARRAY_AS_PROPS);
+    public function testUpdatesDatabaseForUnSubscriptionRequests()
+    {
 
-        $this->_rowset->expects($this->any())
-            ->method('current')
-            ->will($this->returnValue($row));
-        // require for the count call on the rowset in Model/Subscription
-        $this->_rowset->expects($this->any())
-            ->method('count')
-            ->will($this->returnValue(1));
+        $db_params = $this->default_db;
+        $db_params['subscription_state'] = PubSubHubbub::SUBSCRIPTION_TODELETE;
+        $storage = $this->_setupDB($db_params);
+        $this->_callback->setStorage($storage);
+        $storage->expects($this->once())
+            ->method('deleteSubscription')
+            ->with('subscriptionkey');
 
-        $this->_tableGateway->expects($this->once())
-            ->method('update')
-            ->with(
-                $this->equalTo([
-                    'id'                 => 'verifytokenkey',
-                    'verify_token'       => hash('sha256', 'cba'),
-                    'created_time'       => $t->getTimestamp(),
-                    'lease_seconds'      => 1234567,
-                    'subscription_state' => 'verified',
-                    'expiration_time'    => $t->add(new DateInterval('PT1234567S'))->format('Y-m-d H:i:s'),
-                ]),
-                $this->equalTo(['id' => 'verifytokenkey'])
-            );
+        $params = $this->default_params;
+        $params['hub_mode'] = 'unsubscribe';
+        $request = $this->_setupRequest($params);
+        $this->_callback->handle($request);
+        $this->assertEquals('abc', $this->_callback->getHttpResponse()->getBody());
+        $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
+    }
+
+    public function testUpdatesDatabaseForSubscriptionRequests()
+    {
+        $db = $this->_setupDB();
+        $db_params = $this->default_db;
+        $db_params['subscription_state'] = PubSubHubbub::SUBSCRIPTION_VERIFIED;
+        $db_params['lease_seconds'] = $this->default_params['hub_lease_seconds'];
+        $db_params['expiration_time'] = $this->now->add(
+            new \DateInterval('PT' . $this->default_params['hub_lease_seconds'] . 'S')
+        )->format('Y-m-d H:i:s');
+
+        $db->expects($this->once())
+            ->method('setSubscription')
+            ->with($this->equalTo($db_params));
+
+        $this->_callback->setStorage($db);
 
         $this->_callback->handle();
         $this->assertEquals('abc', $this->_callback->getHttpResponse()->getBody());
+        $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
+    }
+
+    public function testUpdatesDatabaseForReSubscriptionRequests()
+    {
+        $db_params = $this->default_db;
+        $db_params['subscription_state'] = PubSubHubbub::SUBSCRIPTION_VERIFIED;
+        $db = $this->_setupDB($db_params);
+
+        $db_params['lease_seconds'] = $this->default_params['hub_lease_seconds'];
+        $db_params['expiration_time'] = $this->future->add(
+            new \DateInterval('PT' . $this->default_params['hub_lease_seconds'] . 'S')
+        )->format('Y-m-d H:i:s');
+
+        $db->expects($this->once())
+            ->method('setSubscription')
+            ->with($this->equalTo($db_params));
+
+        $this->_callback->setStorage($db);
+
+        $this->_callback->handle();
+        $this->assertEquals('abc', $this->_callback->getHttpResponse()->getBody());
+        $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
     }
 
     ######### FEED UPDATE TESTS #############
@@ -523,9 +435,6 @@ class CallbackHTTPTest extends TestCase
     //do we respond with 200?
     public function testRespondsWith200Response()
     {
-        $this->_setupDB();
-        $this->_callback->setSubscriptionKey('subscriptionkey');
-
         $request = $this->_setupRequest(
             [],
             'POST',
@@ -543,8 +452,6 @@ class CallbackHTTPTest extends TestCase
     //do we capture content properly?
     public function testCapturesUpdateContent()
     {
-        $this->_setupDB();
-        $this->_callback->setSubscriptionKey('subscriptionkey');
         $request = $this->_setupRequest(
             [],
             'POST',
@@ -566,8 +473,6 @@ class CallbackHTTPTest extends TestCase
     //do we capture feed content properly?
     public function testCapturesUpdateFeed()
     {
-        $this->_setupDB();
-        $this->_callback->setSubscriptionKey('subscriptionkey');
         $request = $this->_setupRequest(
             [],
             'POST',
@@ -590,8 +495,6 @@ class CallbackHTTPTest extends TestCase
     //do we capture HTML content properly?
     public function testNotCapturesUpdateHTMLAsFeed()
     {
-        $this->_setupDB();
-        $this->_callback->setSubscriptionKey('subscriptionkey');
         $request = $this->_setupRequest(
             [],
             'POST',
@@ -619,9 +522,6 @@ class CallbackHTTPTest extends TestCase
 
     public function testRespondsToInvalidFeedUpdateNotPostWith404Response()
     {
-        $this->_setupDB();
-        $this->_callback->setSubscriptionKey('subscriptionkey');
-
         // yes, this example makes no sense for GET - I know!!!
         $request = $this->_setupRequest(
             [],
@@ -638,8 +538,6 @@ class CallbackHTTPTest extends TestCase
 
     public function testRespondsToValidFeedUpdateWithXHubOnBehalfOfHeader()
     {
-        $this->_setupDB();
-        $this->_callback->setSubscriptionKey('subscriptionkey');
         $request = $this->_setupRequest(
             [],
             'POST',
