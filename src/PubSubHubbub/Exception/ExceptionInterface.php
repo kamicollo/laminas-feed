@@ -6,9 +6,9 @@
  * @license   https://github.com/laminas/laminas-feed/blob/master/LICENSE.md New BSD License
  */
 
-namespace Laminas\Feed\PubSubHubbub\Exception;
+namespace ForkedLaminas\Feed\PubSubHubbub\Exception;
 
-use Laminas\Feed\Exception\ExceptionInterface as Exception;
+use ForkedLaminas\Feed\Exception\ExceptionInterface as Exception;
 
 interface ExceptionInterface extends Exception
 {

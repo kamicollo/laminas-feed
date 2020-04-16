@@ -6,17 +6,17 @@
  * @license   https://github.com/laminas/laminas-feed/blob/master/LICENSE.md New BSD License
  */
 
-namespace Laminas\Feed\PubSubHubbub\Subscriber;
+namespace ForkedLaminas\Feed\PubSubHubbub\Subscriber;
 
 use DateTimeImmutable;
 use Laminas\Diactoros\ServerRequestFactory;
 use Laminas\Diactoros\Stream as DiactorosStream;
-use Laminas\Feed\PubSubHubbub\Exception\RuntimeException;
-use Laminas\Feed\PubSubHubbub\PubSubHubbub as PubSubHubbub;
+use ForkedLaminas\Feed\PubSubHubbub\Exception\RuntimeException;
+use ForkedLaminas\Feed\PubSubHubbub\PubSubHubbub as PubSubHubbub;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamInterface;
 
-class Callback extends \Laminas\Feed\PubSubHubbub\AbstractCallback
+class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
 {
     /**
      * True if the content sent as updates to the Callback URL is a feed update

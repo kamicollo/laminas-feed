@@ -6,11 +6,11 @@
  * @license   https://github.com/laminas/laminas-feed/blob/master/LICENSE.md New BSD License
  */
 
-namespace Laminas\Feed\PubSubHubbub;
+namespace ForkedLaminas\Feed\PubSubHubbub;
 
 use Laminas\Diactoros\Stream as DiactorosStream;
-use Laminas\Feed\PubSubHubbub\Exception\InvalidArgumentException;
-use Laminas\Feed\Uri;
+use ForkedLaminas\Feed\PubSubHubbub\Exception\InvalidArgumentException;
+use ForkedLaminas\Feed\Uri;
 use Laminas\Stdlib\ArrayUtils;
 
 use Traversable;

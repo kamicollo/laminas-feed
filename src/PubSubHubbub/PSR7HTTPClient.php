@@ -1,6 +1,6 @@
 <?php
 
-namespace Laminas\Feed\PubSubHubbub;
+namespace ForkedLaminas\Feed\PubSubHubbub;
 
 use Laminas\Http\Client;
 use Laminas\Http\Request as HttpRequest;
@@ -8,7 +8,7 @@ use Laminas\Psr7Bridge\Psr7Response;
 use Laminas\Psr7Bridge\Psr7ServerRequest;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
-use Laminas\Feed\PubSubHubbub\PSR7ClientInterface;
+use ForkedLaminas\Feed\PubSubHubbub\PSR7ClientInterface;
 use Laminas\Http\Response;
 use Psr\Http\Message\ResponseFactoryInterface;
 

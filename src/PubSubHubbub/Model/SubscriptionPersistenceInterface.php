@@ -6,7 +6,7 @@
  * @license   https://github.com/laminas/laminas-feed/blob/master/LICENSE.md New BSD License
  */
 
-namespace Laminas\Feed\PubSubHubbub\Model;
+namespace ForkedLaminas\Feed\PubSubHubbub\Model;
 
 interface SubscriptionPersistenceInterface
 {

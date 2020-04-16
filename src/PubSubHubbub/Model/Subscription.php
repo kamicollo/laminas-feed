@@ -6,11 +6,11 @@
  * @license   https://github.com/laminas/laminas-feed/blob/master/LICENSE.md New BSD License
  */
 
-namespace Laminas\Feed\PubSubHubbub\Model;
+namespace ForkedLaminas\Feed\PubSubHubbub\Model;
 
 use DateInterval;
 use DateTime;
-use Laminas\Feed\PubSubHubbub;
+use ForkedLaminas\Feed\PubSubHubbub;
 
 class Subscription extends AbstractModel implements SubscriptionPersistenceInterface
 {

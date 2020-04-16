@@ -1,6 +1,6 @@
 <?php
 
-namespace Laminas\Feed\PubSubHubbub;
+namespace ForkedLaminas\Feed\PubSubHubbub;
 
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;

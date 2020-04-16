@@ -6,9 +6,9 @@
  * @license   https://github.com/laminas/laminas-feed/blob/master/LICENSE.md New BSD License
  */
 
-namespace Laminas\Feed\PubSubHubbub\Exception;
+namespace ForkedLaminas\Feed\PubSubHubbub\Exception;
 
-use Laminas\Feed\Exception;
+use ForkedLaminas\Feed\Exception;
 
 class RuntimeException extends Exception\RuntimeException implements ExceptionInterface
 {

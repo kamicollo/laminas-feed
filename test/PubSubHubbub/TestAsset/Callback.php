@@ -8,7 +8,7 @@
 
 namespace LaminasTest\Feed\PubSubHubbub\TestAsset;
 
-use Laminas\Feed\PubSubHubbub\AbstractCallback;
+use ForkedLaminas\Feed\PubSubHubbub\AbstractCallback;
 use Psr\Http\Message\ServerRequestInterface;
 
 class Callback extends AbstractCallback

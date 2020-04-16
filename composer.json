@@ -1,6 +1,6 @@
 {
-    "name": "kamicollo/laminas-feed",
-    "description": "provides functionality for Subscribing to feeds via PubSubHubBub protocol",
+    "name": "kamicollo/laminas-pubsubhubbub",
+    "description": "Heavy fork of Laminas feed, focused on providing functionality for Subscribing to feeds via PubSubHubBub protocol",
     "license": "BSD-3-Clause",
     "keywords": [
         "laminas",
@@ -30,11 +30,11 @@
     },
     "suggest": {        
         "laminas/laminas-db": "Laminas\\Db component, for use with PubSubHubbub",
-        "laminas/laminas-http": "Laminas\\Http for PubSubHubbub, and optionally for use with Laminas\\Feed\\Reader",
+        "laminas/laminas-http": "Laminas\\Http for PubSubHubbub, and optionally for use with Laminas\\Feed\\Reader"
     },
     "autoload": {
         "psr-4": {
-            "Laminas\\Feed\\": "src/"
+            "ForkedLaminas\\Feed\\": "src/"
         }
     },
     "autoload-dev": {

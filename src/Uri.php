@@ -6,7 +6,7 @@
  * @license   https://github.com/laminas/laminas-feed/blob/master/LICENSE.md New BSD License
  */
 
-namespace Laminas\Feed;
+namespace ForkedLaminas\Feed;
 
 class Uri
 {
@@ -139,7 +139,7 @@ class Uri
             return false;
         }
 
-        if ($this->scheme && ! in_array($this->scheme, $this->validSchemes)) {
+        if ($this->scheme && !in_array($this->scheme, $this->validSchemes)) {
             return false;
         }
 
@@ -163,7 +163,7 @@ class Uri
             return true;
         }
 
-        if (! ($this->query || $this->fragment)) {
+        if (!($this->query || $this->fragment)) {
             // No host, path, query or fragment - this is not a valid URI
             return false;
         }
