@@ -134,6 +134,7 @@ class CallbackHTTPTest extends TestCase
         'id'            => 'subscriptionkey',
         'topic_url'         => 'http://www.example.com/topic',
         'hub_url'         => 'http://hub.com',
+        'hub_protocol'      => PubSubHubbub::PROTOCOL03,
         'lease_seconds' => null,
         'subscription_state' => PubSubHubbub::SUBSCRIPTION_NOTVERIFIED,
         'verify_token' => '6d970874d0db767a7058798973f22cf6589601edab57996312f2ef7b56e5584d',
@@ -268,13 +269,41 @@ class CallbackHTTPTest extends TestCase
         $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
     }
 
+    public function testReturnsTrueIfVerifyTokenMissingFromHttpGetDataButPSHB4()
+    {
+        $params = $this->default_params;
+        unset($params['hub_verify_token']);
+        $request = $this->_setupRequest($params);
+        $db_params = $this->default_db;
+        $db_params['hub_protocol'] = PubSubHubbub::PROTOCOL04;
+        $db = $this->_setupDB($db_params);
+        $this->_callback->setStorage($db);
+
+        $this->_callback->handle($request);
+        $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
+    }
+
     public function testReturnsFalseIfModeNotRecognisedFromHttpGetData()
     {
         $params = $this->default_params;
-        $params['hub_mode'] = 'abc';
+        $params['hub_mode'] = 'denied';
         $request = $this->_setupRequest($params);
         $this->_callback->handle($request);
         $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
+    }
+
+    public function testReturnsTrueIfModeDenialButPSHB4()
+    {
+        $params = $this->default_params;
+        $params['hub_mode'] = 'denied';
+        $request = $this->_setupRequest($params);
+        $db_params = $this->default_db;
+        $db_params['hub_protocol'] = PubSubHubbub::PROTOCOL04;
+        $db = $this->_setupDB($db_params);
+        $this->_callback->setStorage($db);
+
+        $this->_callback->handle($request);
+        $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
     }
 
     public function testReturnsFalseIfLeaseSecondsMissedWhenModeIsSubscribeFromHttpGetData()
@@ -384,6 +413,26 @@ class CallbackHTTPTest extends TestCase
         $request = $this->_setupRequest($params);
         $this->_callback->handle($request);
         $this->assertEquals('abc', $this->_callback->getHttpResponse()->getBody());
+        $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
+    }
+
+    public function testUpdatesDatabaseForSubscriptionRequestsDenied()
+    {
+        $db_params = $this->default_db;
+        $db_params['subscription_state'] = PubSubHubbub::SUBSCRIPTION_NOTVERIFIED;
+        $db_params['hub_protocol'] = PubSubHubbub::PROTOCOL04;
+        $storage = $this->_setupDB($db_params);
+        $this->_callback->setStorage($storage);
+
+        $db_params['subscription_state'] = PubSubHubbub::SUBSCRIPTION_DENIED;
+        $storage->expects($this->once())
+            ->method('setSubscription')
+            ->with($this->equalTo($db_params));
+
+        $params = $this->default_params;
+        $params['hub_mode'] = 'denied';
+        $request = $this->_setupRequest($params);
+        $this->_callback->handle($request);
         $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
     }
 

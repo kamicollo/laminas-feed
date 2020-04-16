@@ -26,6 +26,7 @@ class PubSubHubbub
     const SUBSCRIPTION_VERIFIED    = 'verified';
     const SUBSCRIPTION_NOTVERIFIED = 'not_verified';
     const SUBSCRIPTION_TODELETE    = 'to_delete';
+    const SUBSCRIPTION_DENIED    = 'denied';
 
     const PROTOCOL04 = '0.4';
     const PROTOCOL03 = '0.3';

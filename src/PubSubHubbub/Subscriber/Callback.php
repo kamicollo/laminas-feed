@@ -9,13 +9,10 @@
 namespace Laminas\Feed\PubSubHubbub\Subscriber;
 
 use DateTimeImmutable;
-use Laminas\Diactoros\ServerRequest;
 use Laminas\Diactoros\ServerRequestFactory;
-use Laminas\Feed\PubSubHubbub\Exception;
 use Laminas\Diactoros\Stream as DiactorosStream;
 use Laminas\Feed\PubSubHubbub\Exception\RuntimeException;
 use Laminas\Feed\PubSubHubbub\PubSubHubbub as PubSubHubbub;
-use Laminas\Feed\Uri;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamInterface;
 
@@ -219,12 +216,24 @@ class Callback extends \Laminas\Feed\PubSubHubbub\AbstractCallback
          * by the Hub Server. Therefore, its absence is considered invalid.
          */
         $params = $this->getRequest()->getQueryParams();
+
+        //check if denial request 
+        if (
+            array_key_exists('hub_mode', $params) &&
+            ($params['hub_mode'] == 'denied') &&
+            ($this->currentSubscriptionData['hub_protocol'] == PubSubHubbub::PROTOCOL04)
+        ) {
+            return array_key_exists('hub_topic', $params);
+        }
+
         $required = [
             'hub_mode',
             'hub_topic',
             'hub_challenge',
-            'hub_verify_token',
         ];
+        if ($this->currentSubscriptionData['hub_protocol'] == PubSubHubbub::PROTOCOL03) {
+            $required[] = 'hub_verify_token';
+        }
         foreach ($required as $key) {
             if (!array_key_exists($key, $params)) {
                 return false;
@@ -248,7 +257,7 @@ class Callback extends \Laminas\Feed\PubSubHubbub\AbstractCallback
     protected function confirmSubscriptionState($mode)
     {
         $subscription_state = $this->currentSubscriptionData['subscription_state'];
-        if ($mode == 'subscribe') {
+        if ($mode == 'subscribe' || $mode == 'denied') {
             return ($subscription_state == PubSubHubbub::SUBSCRIPTION_NOTVERIFIED) ||
                 ($subscription_state == PubSubHubbub::SUBSCRIPTION_VERIFIED);
         } elseif ($mode == 'unsubscribe') {
@@ -290,6 +299,10 @@ class Callback extends \Laminas\Feed\PubSubHubbub\AbstractCallback
             $this->getStorage()->setSubscription($data);
         } elseif ($mode == 'unsubscribe') {
             $this->getStorage()->deleteSubscription($this->subscriptionKey);
+        } elseif ($mode == 'denied') {
+            $data = $this->currentSubscriptionData;
+            $data['subscription_state'] = PubSubHubbub::SUBSCRIPTION_DENIED;
+            $this->getStorage()->setSubscription($data);
         }
     }
 
@@ -381,8 +394,7 @@ class Callback extends \Laminas\Feed\PubSubHubbub\AbstractCallback
     }
 
     /**
-     * Check for a valid verify_token. By default attempts to compare values
-     * with that sent from Hub, otherwise merely ascertains its existence.
+     * Check for a valid verify_token. Only performed for PSHB 0.3 protocol version.
      *
      * @param  array $httpGetData
      * @param  bool $checkValue
@@ -391,6 +403,9 @@ class Callback extends \Laminas\Feed\PubSubHubbub\AbstractCallback
     // @codingStandardsIgnoreStart
     protected function _hasValidVerifyToken()
     {
+        if ($this->currentSubscriptionData['hub_protocol'] == PubSubHubbub::PROTOCOL04) {
+            return true;
+        }
         $verifyToken = $this->currentSubscriptionData['verify_token'];
         return ($verifyToken
             ==
