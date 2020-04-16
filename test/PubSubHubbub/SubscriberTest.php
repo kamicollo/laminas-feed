@@ -636,4 +636,40 @@ class SubscriberTest extends TestCase
         $this->subscriber->setHubParameter('hub', 'hub.secret', 'bar');
         $this->assertEquals([], $this->subscriber->getHubParameters('hub'));
     }
+
+    public function testDefaultProtocol()
+    {
+        $this->assertEquals(PubSubHubbub::PROTOCOL03, $this->subscriber->getDefaultProtocol());
+    }
+
+    public function testCanSetDefaultProtocol()
+    {
+        $this->subscriber->setDefaultProtocol(PubSubHubbub::PROTOCOL04);
+        $this->assertEquals(PubSubHubbub::PROTOCOL04, $this->subscriber->getDefaultProtocol());
+    }
+
+    public function testSetInvalidDefaultProtocol()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->subscriber->setDefaultProtocol('random string');
+    }
+
+    public function testHubAddedWithDefaultProtocol()
+    {
+        $this->subscriber->setDefaultProtocol(PubSubHubbub::PROTOCOL04);
+        $this->subscriber->addHubUrl('http://example.com');
+        $this->assertEquals(PubSubHubbub::PROTOCOL04, $this->subscriber->getHubProtocol('http://example.com'));
+    }
+
+    public function testHubAddedWithExplicitProtocol()
+    {
+        $this->subscriber->addHubUrl('http://example.com', PubSubHubbub::PROTOCOL04);
+        $this->assertEquals(PubSubHubbub::PROTOCOL04, $this->subscriber->getHubProtocol('http://example.com'));
+    }
+
+    public function testUnknownHubProtocol()
+    {
+        $this->subscriber->addHubUrl('http://example.com', PubSubHubbub::PROTOCOL04);
+        $this->assertEquals(null, $this->subscriber->getHubProtocol('foo'));
+    }
 }

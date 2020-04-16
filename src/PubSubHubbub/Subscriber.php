@@ -123,6 +123,13 @@ class Subscriber
     protected $headers = [];
 
     /**
+     * List of hub protocols
+     *
+     * @var array
+     */
+    protected $hub_protocols = [];
+
+    /**
      * Tells the Subscriber to append any subscription identifier to the path
      * of the base Callback URL. E.g. an identifier "subkey1" would be added
      * to the callback URL "http://www.example.com/callback" to create a subscription
@@ -145,6 +152,9 @@ class Subscriber
      * @var PSRClientInterface
      */
     protected $http_client;
+
+
+    protected $activeProtocol = PubSubHubbub::PROTOCOL03;
 
     /**
      * Constructor; accepts an array or Traversable instance to preset
@@ -387,6 +397,50 @@ class Subscriber
         return $this->preferredVerificationMode;
     }
 
+    public function getDefaultProtocol()
+    {
+        return $this->activeProtocol;
+    }
+
+    public function setDefaultProtocol($protocol)
+    {
+        if (
+            $protocol !== PubSubHubbub::PROTOCOL03 &&
+            $protocol !== PubSubHubbub::PROTOCOL04
+        ) {
+            throw new InvalidArgumentException(
+                'Unknown Pubsubhubbub protocol given "' . $protocol . '"'
+            );
+        }
+        $this->activeProtocol = $protocol;
+        return $this;
+    }
+
+    /** Get the Pubsubhubub protocol version used by the hub */
+    public function getHubProtocol($hubUrl)
+    {
+        if (array_key_exists($hubUrl, $this->hub_protocols)) {
+            return $this->hub_protocols[$hubUrl];
+        }
+    }
+
+    /** Get the Pubsubhubub protocol version used by the hub */
+    public function setHubProtocol($hubUrl, $protocol)
+    {
+        if ($protocol == null) {
+            $protocol = $this->getDefaultProtocol();
+        } elseif (
+            $protocol !== PubSubHubbub::PROTOCOL03 &&
+            $protocol !== PubSubHubbub::PROTOCOL04
+        ) {
+            throw new InvalidArgumentException(
+                'Unknown Pubsubhubbub protocol given "' . $protocol . '"'
+            );
+        }
+        $this->hub_protocols[$hubUrl] = $protocol;
+        return $this;
+    }
+
     /**
      * Add a Hub Server URL supported by Publisher
      *
@@ -394,10 +448,11 @@ class Subscriber
      * @return $this
      * @throws Exception\InvalidArgumentException
      */
-    public function addHubUrl($url)
+    public function addHubUrl($url, $protocol = null)
     {
         $this->_validateUrl($url, "url");
         $this->hubUrls[] = $url;
+        $this->setHubProtocol($url, $protocol);
         return $this;
     }
 

@@ -27,6 +27,9 @@ class PubSubHubbub
     const SUBSCRIPTION_NOTVERIFIED = 'not_verified';
     const SUBSCRIPTION_TODELETE    = 'to_delete';
 
+    const PROTOCOL04 = '0.4';
+    const PROTOCOL03 = '0.3';
+
     /**
      * @var Escaper
      */
@@ -58,8 +61,8 @@ class PubSubHubbub
         } else {
             throw new Exception\InvalidArgumentException(
                 'The source parameter was'
-                . ' invalid, i.e. not a URL string or an instance of type'
-                . ' Laminas\Feed\Reader\Feed\AbstractFeed'
+                    . ' invalid, i.e. not a URL string or an instance of type'
+                    . ' Laminas\Feed\Reader\Feed\AbstractFeed'
             );
         }
         return $feed->getHubs();
@@ -85,7 +88,7 @@ class PubSubHubbub
      */
     public static function getHttpClient()
     {
-        if (! isset(static::$httpClient)) {
+        if (!isset(static::$httpClient)) {
             static::$httpClient = new Http\Client();
         } else {
             static::$httpClient->resetParameters();
