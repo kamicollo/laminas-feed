@@ -9,6 +9,7 @@
 namespace Laminas\Feed\PubSubHubbub;
 
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
 
 interface CallbackInterface
 {
@@ -17,34 +18,28 @@ interface CallbackInterface
      * unsubscription request. This should be the Hub Server confirming the
      * the request prior to taking action on it.
      *
-     * @param null|array $httpData GET/POST data if available and not in $_GET/POST
+     * @param null|array $request current Request PSR-7 object
      * @param bool $sendResponseNow Whether to send response now or when asked
      */
-    public function handle(array $httpData = null, $sendResponseNow = false);
+    public function handle(ServerRequestInterface $request = null, $sendResponseNow = false);
 
     /**
-     * Send the response, including all headers.
-     * If you wish to handle this via Laminas\Mvc\Controller, use the getter methods
-     * to retrieve any data needed to be set on your HTTP Response object, or
-     * simply give this object the HTTP Response instance to work with for you!
+     * Send the response, including all headers. You can also use getHTTPResponse() to
+     * get PSR-7 Response and pass it to your framework to emit.     
      *
      * @return void
      */
     public function sendResponse();
 
     /**
-     * An instance of a class handling Http Responses. This is implemented in
-     * Laminas\Feed\Pubsubhubbub\HttpResponse which shares an unenforced interface with
-     * (i.e. not inherited from) Laminas\Feed\Pubsubhubbub\AbstractCallback.
+     * Sets an instance of a class handling Http Responses. PSR-7.
      *
      * @param ResponseInterface $httpResponse
      */
     public function setHttpResponse(ResponseInterface $httpResponse);
 
     /**
-     * An instance of a class handling Http Responses. This is implemented in
-     * Laminas\Feed\Pubsubhubbub\HttpResponse which shares an unenforced interface with
-     * (i.e. not inherited from) Laminas\Feed\Pubsubhubbub\AbstractCallback.
+     * Returns an instance of a class handling Http Responses. PSR-7.
      *
      * @return ResponseInterface
      */

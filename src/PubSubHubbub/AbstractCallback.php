@@ -221,6 +221,7 @@ abstract class AbstractCallback implements CallbackInterface
     {
         if ($this->httpResponse === null) {
             $this->httpResponse = $this->getResponseFactory()->createResponse();
+            $this->httpResponse->withStatus(404);
         }
         return $this->httpResponse;
     }
