@@ -38,6 +38,7 @@ class SubscriberDBTest extends TestCase
     protected function setUp(): void
     {
         $this->subscriber   = new Subscriber();
+        $this->subscriber->setDefaultProtocol(PubSubHubbub::PROTOCOL03);
     }
 
     protected function initDb()
@@ -60,6 +61,7 @@ class SubscriberDBTest extends TestCase
             . "id varchar(32) PRIMARY KEY NOT NULL DEFAULT '', "
             . 'topic_url varchar(255) DEFAULT NULL, '
             . 'hub_url varchar(255) DEFAULT NULL, '
+            . 'hub_protocol varchar(10) DEFAULT NULL, '
             . 'created_time datetime DEFAULT NULL, '
             . 'lease_seconds bigint(20) DEFAULT NULL, '
             . 'verify_token varchar(255) DEFAULT NULL, '
@@ -96,6 +98,7 @@ class SubscriberDBTest extends TestCase
                 'id' => $id,
                 'topic_url' => 'http://foo.com',
                 'hub_url' => 'http://localhost',
+                'hub_protocol' => $this->subscriber->getDefaultProtocol(),
                 'created_time' => $createdTime,
                 'lease_seconds' => '125',
                 'verify_token' => hash('sha256', 'token'),
@@ -129,6 +132,7 @@ class SubscriberDBTest extends TestCase
                 'id' => $id,
                 'topic_url' => 'http://foo.com',
                 'hub_url' => 'http://localhost',
+                'hub_protocol' => $this->subscriber->getDefaultProtocol(),
                 'created_time' => $createdTime,
                 'lease_seconds' => null,
                 'verify_token' => hash('sha256', 'token'),
@@ -161,6 +165,7 @@ class SubscriberDBTest extends TestCase
                 'id' => $id,
                 'topic_url' => 'http://foo.com',
                 'hub_url' => 'http://localhost',
+                'hub_protocol' => $this->subscriber->getDefaultProtocol(),
                 'created_time' => $createdTime,
                 'lease_seconds' => null,
                 'verify_token' => hash('sha256', 'token'),
@@ -206,12 +211,48 @@ class SubscriberDBTest extends TestCase
                 'id' => $id,
                 'topic_url' => 'http://foo.com',
                 'hub_url' => 'http://localhost',
+                'hub_protocol' => $this->subscriber->getDefaultProtocol(),
                 'created_time' => $createdTime,
                 'lease_seconds' => '125',
                 'verify_token' => hash('sha256', 'token2'),
                 'secret' => 'secret',
                 'expiration_time' => $expirationTime->format('Y-m-d H:i:s'),
                 'subscription_state' => PubSubHubbub::SUBSCRIPTION_TODELETE,
+            ]
+        );
+    }
+
+    public function testDBValuesProtocol04()
+    {
+        $adapter = $this->initDb();
+        $table   = new TableGateway('subscription', $adapter);
+        $subscription = new Subscription($table);
+        $this->subscriber->setStorage($subscription);
+
+        $this->subscriber->setTopicUrl('http://foo.com');
+        $this->subscriber->addHubUrl('http://localhost', PubSubHubbub::PROTOCOL04);
+        $this->subscriber->setCallbackUrl('http://localhost/callback');
+        $this->subscriber->setTestStaticToken('token');
+
+        $this->subscriber->subscribeAll();
+        $id = md5('http://foo.com' . 'http://localhost');
+
+        $dataSubscription = $subscription->getSubscription($id);
+        $createdTime = $dataSubscription['created_time'];
+
+        $this->assertEquals(
+            $dataSubscription,
+            [
+                'id' => $id,
+                'topic_url' => 'http://foo.com',
+                'hub_url' => 'http://localhost',
+                'hub_protocol' => PubSubHubbub::PROTOCOL04,
+                'created_time' => $createdTime,
+                'lease_seconds' => null,
+                'verify_token' => null,
+                'secret' => null,
+                'expiration_time' => null,
+                'subscription_state' => PubSubHubbub::SUBSCRIPTION_NOTVERIFIED,
             ]
         );
     }

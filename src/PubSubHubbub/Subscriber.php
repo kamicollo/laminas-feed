@@ -1004,11 +1004,17 @@ class Subscriber
      */
     protected function saveSubscriptionState($mode, $hubUrl, $params)
     {
+        if ($this->getHubProtocol($hubUrl) == PubSubHubbub::PROTOCOL03) {
+            $verify_token = hash('sha256', $params['hub.verify_token']);
+        } else {
+            $verify_token = null;
+        }
         $data = [
             'id'              => $this->_generateSubscriptionKey($params['hub.topic'], $hubUrl),
             'topic_url'       => $params['hub.topic'],
             'hub_url'         => $hubUrl,
-            'verify_token'    => hash('sha256', $params['hub.verify_token']),
+            'hub_protocol'    => $this->getHubProtocol($hubUrl),
+            'verify_token'    => $verify_token,
             // @codingStandardsIgnoreStart
             'subscription_state' => ($mode == 'unsubscribe') ? PubSubHubbub::SUBSCRIPTION_TODELETE : PubSubHubbub::SUBSCRIPTION_NOTVERIFIED,
             // @codingStandardsIgnoreEnd
