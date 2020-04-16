@@ -1,9 +1,14 @@
 # Fork of laminas-feed 
 
-This is a fork of `Laminas\Feed` that includes fixes & features to its PubSubHubBub component:
-- General refactoring of subscriber class
-- Fixes of various tests, introduction of missing tests
-- Introduction of API to specify hub-specific headers, url parameters, and non-hub-specific headers
-- Removed dependency from Laminas HTTP Client (can bring your own PSR7 client with a thin wrapper)
+This is a fork of `Laminas\Feed` that strips it down to its PubSubHubBub component with heavy modifications:
 
-Because I messed up commit branches, commit order, and have introduced both API fixes and new features, it is not very likely this will ever make it into a pull request -_-
+- General refactoring, additional test coverage
+- Introduction of Subscriber API to specify hub-specific headers, url parameters, and non-hub-specific headers
+- PSR-7 / PSR-17 & PSR-18 friendly, uses PSR-7 requests and responses under the hood
+- Support for hub_secrets
+- Support for Pubsubhubbub 0.4 protocol and 0.3 protocol (per hub basis)
+
+Because I made a spaghetti of commit branches, commit order, and have introduced both API fixes and new features, it is quite unlikely this will ever make it into pull requests 
+back to the original laminas-feed project. -_-
+
+Yet, this was a very enjoyable refactoring process, so hats off to the original creators!
