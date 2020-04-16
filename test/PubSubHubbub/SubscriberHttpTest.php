@@ -59,6 +59,7 @@ class SubscriberHttpTest extends TestCase
             $this->client->setAdapter(Socket::class);
             PubSubHubbub::setHttpClient($this->client);
             $this->subscriber = new Subscriber();
+            $this->subscriber->setDefaultProtocol(PubSubHubbub::PROTOCOL03);
 
             $this->storage = $this->_getCleanMock(Subscription::class);
             $this->subscriber->setStorage($this->storage);
@@ -335,5 +336,51 @@ class SubscriberHttpTest extends TestCase
         $tableGateway = new TableGateway($table, $adapter);
         $mocked = $this->getMockBuilder($className)->setConstructorArgs([$tableGateway])->setMethods($stubMethods)->getMock();
         return $mocked;
+    }
+
+    public function testSubscriptionRequestSendsExpectedPostDataProtocol04()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $this->subscriber->addHubUrl($this->baseuri . '/testRawPostData.php', PubSubHubbub::PROTOCOL04);
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->usePathParameter(false);
+        $this->subscriber->setLeaseSeconds(2592000);
+        $token = md5('http://www.example.com/topic' . $this->baseuri . '/testRawPostData.php');
+        $this->subscriber->setTestStaticToken('abc'); // override for testing        
+        $this->subscriber->subscribeAll();
+        $this->assertEquals(
+            'hub.callback=http%3A%2F%2Fwww.example.com%2Fcallback%3Fxhub.subscription%3D' . $token
+                . '&hub.lease_seconds=2592000&hub.mode='
+                . 'subscribe&hub.topic=http%3A%2F%2Fwww.example.com%2Ftopic',
+            $this->client->getResponse()->getBody()
+        );
+    }
+
+    public function testSubscriptionRequestSendsExpectedPostDataMultipleProtocols()
+    {
+        $this->subscriber->setTopicUrl('http://www.example.com/topic');
+        $this->subscriber->addHubUrl($this->baseuri . '/testRawPostData.php', PubSubHubbub::PROTOCOL04);
+        $this->subscriber->addHubUrl($this->baseuri . '/testRawPostData.php?foo', PubSubHubbub::PROTOCOL03);
+        $this->subscriber->setCallbackUrl('http://www.example.com/callback');
+        $this->subscriber->usePathParameter(true);
+        $this->subscriber->setLeaseSeconds(2592000);
+        $token1 = md5('http://www.example.com/topic' . $this->baseuri . '/testRawPostData.php');
+        $token2 = md5('http://www.example.com/topic' . $this->baseuri . '/testRawPostData.php?foo');
+        $this->subscriber->setTestStaticToken('abc'); // override for testing        
+        $this->subscriber->subscribeAll();
+        $responses = $this->subscriber->getSuccesses();
+        $this->assertEquals(
+            'hub.callback=http%3A%2F%2Fwww.example.com%2Fcallback%2F' . $token1
+                . '&hub.lease_seconds=2592000&hub.mode='
+                . 'subscribe&hub.topic=http%3A%2F%2Fwww.example.com%2Ftopic',
+            $responses[$this->baseuri . '/testRawPostData.php']->getBody()->__toString()
+        );
+        $this->assertEquals(
+            'hub.callback=http%3A%2F%2Fwww.example.com%2Fcallback%2F' . $token2
+                . '&hub.lease_seconds=2592000&hub.mode='
+                . 'subscribe&hub.topic=http%3A%2F%2Fwww.example.com%2Ftopic&hub.veri'
+                . 'fy=sync&hub.verify=async&hub.verify_token=abc',
+            $responses[$this->baseuri . '/testRawPostData.php?foo']->getBody()->__toString()
+        );
     }
 }

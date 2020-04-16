@@ -86,12 +86,11 @@ class Subscriber
     protected $errors = [];
 
     /**
-     * An array of Hub Server URLs for Hubs operating at this time in
-     * asynchronous verification mode.
+     * An array of successful requests.
      *
      * @var array
      */
-    protected $asyncHubs = [];
+    protected $successes = [];
 
     /**
      * An instance of Laminas\Feed\Pubsubhubbub\Model\SubscriptionPersistence used to background
@@ -721,15 +720,16 @@ class Subscriber
 
     /**
      * Return an array of Hub Server URLs who returned a response indicating
-     * operation in Asynchronous Verification Mode, i.e. they will not confirm
-     * any (un)subscription immediately but at a later time (Hubs may be
-     * doing this as a batch process when load balancing)
+     * successful operation in either Sync or Asynchronous Verification Mode, 
+     * The latter  will not confirm any (un)subscription immediately but at 
+     * a later time 
+     * (Hubs may be doing this as a batch process when load balancing)
      *
      * @return array
      */
-    public function getAsyncHubs()
+    public function getSuccesses()
     {
-        return $this->asyncHubs;
+        return $this->successes;
     }
 
     /**
@@ -752,7 +752,7 @@ class Subscriber
             );
         }
         $this->errors    = [];
-        $this->asyncHubs = [];
+        $this->successes = [];
         foreach ($hubs as $url) {
 
 
@@ -788,23 +788,9 @@ class Subscriber
                 $response->getStatusCode() !== 204
                 && $response->getStatusCode() !== 202
             ) {
-                $this->errors[] = [
-                    'response' => $response,
-                    'hubUrl'   => $url,
-                ];
-
-                /**
-                 * At first I thought it was needed, but the backend storage will
-                 * allow tracking async without any user interference. It's left
-                 * here in case the user is interested in knowing what Hubs
-                 * are using async verification modes so they may update Models and
-                 * move these to asynchronous processes.
-                 */
-            } elseif ($response->getStatusCode() == 202) {
-                $this->asyncHubs[] = [
-                    'response' => $response,
-                    'hubUrl'   => $url,
-                ];
+                $this->errors[$url] = $response;
+            } else {
+                $this->successes[$url] = $response;
             }
         }
     }
@@ -855,29 +841,32 @@ class Subscriber
             'hub.topic' => $this->getTopicUrl(),
         ];
 
-        if ($this->getPreferredVerificationMode() === PubSubHubbub::VERIFICATION_MODE_SYNC) {
-            $vmodes = [
-                PubSubHubbub::VERIFICATION_MODE_SYNC,
-                PubSubHubbub::VERIFICATION_MODE_ASYNC,
-            ];
-        } else {
-            $vmodes = [
-                PubSubHubbub::VERIFICATION_MODE_ASYNC,
-                PubSubHubbub::VERIFICATION_MODE_SYNC,
-            ];
-        }
-        $params['hub.verify'] = [];
-        foreach ($vmodes as $vmode) {
-            $params['hub.verify'][] = $vmode;
+        if ($this->getHubProtocol($hubUrl) == PubSubHubbub::PROTOCOL03) {
+            if ($this->getPreferredVerificationMode() === PubSubHubbub::VERIFICATION_MODE_SYNC) {
+                $vmodes = [
+                    PubSubHubbub::VERIFICATION_MODE_SYNC,
+                    PubSubHubbub::VERIFICATION_MODE_ASYNC,
+                ];
+            } else {
+                $vmodes = [
+                    PubSubHubbub::VERIFICATION_MODE_ASYNC,
+                    PubSubHubbub::VERIFICATION_MODE_SYNC,
+                ];
+            }
+            $params['hub.verify'] = [];
+            foreach ($vmodes as $vmode) {
+                $params['hub.verify'][] = $vmode;
+            }
+
+            $token                      = $this->_generateVerifyToken();
+            $params['hub.verify_token'] = $token;
         }
 
         /**
          * Establish a persistent verify_token and attach key to callback
          * URL's path/query_string
          */
-        $key                        = $this->_generateSubscriptionKey($this->getTopicUrl(), $hubUrl);
-        $token                      = $this->_generateVerifyToken();
-        $params['hub.verify_token'] = $token;
+        $key = $this->_generateSubscriptionKey($this->getTopicUrl(), $hubUrl);
 
         // Note: query string only usable with PuSH 0.2 Hubs
         if (!$this->usePathParameter) {
