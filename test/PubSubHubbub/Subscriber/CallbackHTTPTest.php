@@ -571,14 +571,119 @@ class CallbackHTTPTest extends TestCase
             $this->getStream(__DIR__ . '/_files/atom10.xml')
         );
 
-        $request->expects($this->any())->method('getHeader')->will(
-            $this->returnValueMap([
-                ['X-Hub-On-Behalf-Of', [1]]
-            ])
-        );
-
         $this->_callback->handle($request);
         $header = $this->_callback->getHttpResponse()->getHeader('X-Hub-On-Behalf-Of');
         $this->assertEquals([1], $header);
+    }
+
+    public function testNeedsAuthentication()
+    {
+        $db_params = $this->default_db;
+        $db_params['secret'] = 'secret';
+        $db = $this->_setupDB($db_params);
+        $this->_callback->setStorage($db);
+        $this->_callback->handle();
+        $this->assertEquals(true, $this->_callback->needsAuthentication());
+    }
+
+    public function testDoesNotNeedAuthentication()
+    {
+        $db_params = $this->default_db;
+        $db_params['secret'] = null;
+        $db = $this->_setupDB($db_params);
+        $this->_callback->setStorage($db);
+        $this->_callback->handle();
+        $this->assertEquals(false, $this->_callback->needsAuthentication());
+    }
+
+    public function testAuthenticatedDistribution()
+    {
+        $db_params = $this->default_db;
+        $db_params['secret'] = 'secret';
+        $db = $this->_setupDB($db_params);
+        $this->_callback->setStorage($db);
+
+        $hmac = 'sha1='
+            . hash_hmac('sha1', file_get_contents(__DIR__ . '/_files/atom10.xml'), 'secret');
+        $request = $this->_setupRequest(
+            [],
+            'POST',
+            [
+                ['X-Hub-Signature', $hmac],
+                ['Content-Type', 'application/atom+xml']
+            ],
+            null,
+            $this->getStream(__DIR__ . '/_files/atom10.xml')
+        );
+
+        $this->_callback->handle($request);
+        $this->assertEquals(true, $this->_callback->authenticateContent());
+    }
+
+    public function testAuthenticatedDistributionWrongSecret()
+    {
+        $db_params = $this->default_db;
+        $db_params['secret'] = 'secret';
+        $db = $this->_setupDB($db_params);
+        $this->_callback->setStorage($db);
+
+        $hmac = 'sha1='
+            . hash_hmac('sha1', file_get_contents(__DIR__ . '/_files/atom10.xml'), 'wrongsecret');
+        $request = $this->_setupRequest(
+            [],
+            'POST',
+            [
+                ['X-Hub-Signature', $hmac],
+                ['Content-Type', 'application/atom+xml']
+            ],
+            null,
+            $this->getStream(__DIR__ . '/_files/atom10.xml')
+        );
+
+        $this->_callback->handle($request);
+        $this->assertEquals(false, $this->_callback->authenticateContent());
+    }
+
+    public function testAuthenticatedDistributionNoSecret()
+    {
+        $db_params = $this->default_db;
+        $db_params['secret'] = 'secret';
+        $db = $this->_setupDB($db_params);
+        $this->_callback->setStorage($db);
+
+
+        $request = $this->_setupRequest(
+            [],
+            'POST',
+            [
+                ['Content-Type', 'application/atom+xml']
+            ],
+            null,
+            $this->getStream(__DIR__ . '/_files/atom10.xml')
+        );
+
+        $this->_callback->handle($request);
+
+        $this->assertEquals(false, $this->_callback->authenticateContent());
+    }
+
+    public function testAuthenticatedDistributionHasNoSecret()
+    {
+        $hmac = 'sha1='
+            . hash_hmac('sha1', file_get_contents(__DIR__ . '/_files/atom10.xml'), 'randomsecret');
+        $request = $this->_setupRequest(
+            [],
+            'POST',
+            [
+                ['X-Hub-Signature', $hmac],
+                ['Content-Type', 'application/atom+xml']
+            ],
+            null,
+            $this->getStream(__DIR__ . '/_files/atom10.xml')
+        );
+
+        $this->_callback->handle($request);
+        $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(true, $this->_callback->authenticateContent());
     }
 }

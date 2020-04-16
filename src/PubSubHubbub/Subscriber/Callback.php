@@ -67,6 +67,13 @@ class Callback extends \Laminas\Feed\PubSubHubbub\AbstractCallback
     protected $now;
 
     /**
+     * State of Authenticated content distribution
+     *
+     * @var bool|null
+     */
+    protected $authenticatedUpdate;
+
+    /**
      * Set a subscription key to use for the current callback request manually.
      * Required if usePathParameter is enabled for the Subscriber.
      *
@@ -169,8 +176,6 @@ class Callback extends \Laminas\Feed\PubSubHubbub\AbstractCallback
             || stripos($contentType, 'application/rdf+xml') === 0)) {
             $this->setFeedUpdate(true);
         }
-        //TODO
-        //1. Validate hub secret        
     }
 
     protected function processVerification()
@@ -437,5 +442,40 @@ class Callback extends \Laminas\Feed\PubSubHubbub\AbstractCallback
     public function setTimeNow(DateTimeImmutable $now)
     {
         $this->now = $now;
+    }
+
+    /**
+     * Returns the state whether an update was authenticated
+     * True - yes/not required; false - authentication failed; 
+     *
+     * @return bool|null
+     */
+    public function authenticateContent()
+    {
+        if (!$this->needsAuthentication()) {
+            return true;
+        }
+        $sha1 = $this->getRequest()->getHeaderLine('X-Hub-Signature');
+        $check = 'sha1='
+            . hash_hmac(
+                'sha1',
+                $this->getRequest()->getBody()->getContents(),
+                $this->currentSubscriptionData['secret']
+            );
+        return $sha1 === $check;
+    }
+
+    /**
+     * Returns if content authentication using HMAC is required
+     *
+     * @return bool
+     */
+    public function needsAuthentication()
+    {
+        if ($this->currentSubscriptionData == null) {
+            throw new RuntimeException('Request not yet handled, subscription data not yet retrieved');
+        } else {
+            return $this->currentSubscriptionData['secret'] !== null;
+        }
     }
 }
