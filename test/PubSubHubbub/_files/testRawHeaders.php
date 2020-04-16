@@ -27,5 +27,5 @@ if (!function_exists('apache_request_headers')) {
         return ($arh);
     }
 }
-
+header($_SERVER["SERVER_PROTOCOL"] . " 202 Verified");
 echo json_encode(apache_request_headers());

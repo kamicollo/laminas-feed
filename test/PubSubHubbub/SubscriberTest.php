@@ -37,8 +37,7 @@ class SubscriberTest extends TestCase
 
     protected function setUp(): void
     {
-        $client = new HttpClient();
-        PubSubHubbub::setHttpClient($client);
+
         $this->subscriber   = new Subscriber();
         $this->adapter      = $this->_getCleanMock(
             Adapter::class

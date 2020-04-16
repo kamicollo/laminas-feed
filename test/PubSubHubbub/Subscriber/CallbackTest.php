@@ -69,7 +69,7 @@ class CallbackTest extends TestCase
 
     public function testCanSetHttpResponseObject()
     {
-        $client = new PSR7HTTPClient(PubSubHubbub::getHttpClient());
+        $client = new PSR7HTTPClient();
         $response = $client->createResponse();
         $this->_callback->setHttpResponse($response);
         $this->assertInstanceOf(ResponseInterface::class, $this->_callback->getHttpResponse());

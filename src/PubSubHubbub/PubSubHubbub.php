@@ -9,8 +9,6 @@
 namespace Laminas\Feed\PubSubHubbub;
 
 use Laminas\Escaper\Escaper;
-use Laminas\Feed\Reader;
-use Laminas\Http;
 
 class PubSubHubbub
 {
@@ -35,78 +33,6 @@ class PubSubHubbub
      * @var Escaper
      */
     protected static $escaper;
-
-    /**
-     * Singleton instance if required of the HTTP client
-     *
-     * @var Http\Client
-     */
-    protected static $httpClient;
-
-    /**
-     * Simple utility function which imports any feed URL and
-     * determines the existence of Hub Server endpoints. This works
-     * best if directly given an instance of Laminas\Feed\Reader\Atom|Rss
-     * to leverage off.
-     *
-     * @param  string|Reader\Feed\AbstractFeed $source
-     * @return array
-     * @throws Exception\InvalidArgumentException
-     */
-    public static function detectHubs($source)
-    {
-        if (is_string($source)) {
-            $feed = Reader\Reader::import($source);
-        } elseif ($source instanceof Reader\Feed\AbstractFeed) {
-            $feed = $source;
-        } else {
-            throw new Exception\InvalidArgumentException(
-                'The source parameter was'
-                    . ' invalid, i.e. not a URL string or an instance of type'
-                    . ' Laminas\Feed\Reader\Feed\AbstractFeed'
-            );
-        }
-        return $feed->getHubs();
-    }
-
-    /**
-     * Allows the external environment to make laminas-oauth use a specific
-     * Client instance.
-     *
-     * @return void
-     */
-    public static function setHttpClient(Http\Client $httpClient)
-    {
-        static::$httpClient = $httpClient;
-    }
-
-    /**
-     * Return the singleton instance of the HTTP Client. Note that
-     * the instance is reset and cleared of previous parameters GET/POST.
-     * Headers are NOT reset but handled by this component if applicable.
-     *
-     * @return Http\Client
-     */
-    public static function getHttpClient()
-    {
-        if (!isset(static::$httpClient)) {
-            static::$httpClient = new Http\Client();
-        } else {
-            static::$httpClient->resetParameters();
-        }
-        return static::$httpClient;
-    }
-
-    /**
-     * Simple mechanism to delete the entire singleton HTTP Client instance
-     * which forces a new instantiation for subsequent requests.
-     *
-     * @return void
-     */
-    public static function clearHttpClient()
-    {
-        static::$httpClient = null;
-    }
 
     /**
      * Set the Escaper instance

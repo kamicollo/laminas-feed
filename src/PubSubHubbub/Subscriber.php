@@ -805,8 +805,7 @@ class Subscriber
     {
         // @codingStandardsIgnoreEnd
         if ($this->http_client === null) {
-            $client = PubSubHubbub::getHttpClient();
-            $this->setHTTPClient(new PSR7HTTPClient($client));
+            $this->setHTTPClient(new PSR7HTTPClient());
         }
 
         return $this->http_client;

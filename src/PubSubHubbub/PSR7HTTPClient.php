@@ -21,8 +21,11 @@ class PSR7HTTPClient implements PSR7ClientInterface, ResponseFactoryInterface
      */
     protected $client;
 
-    public function __construct(Client $client)
+    public function __construct(Client $client = null)
     {
+        if ($client == null) {
+            $client = new Client();
+        }
         $this->client = $client;
     }
 

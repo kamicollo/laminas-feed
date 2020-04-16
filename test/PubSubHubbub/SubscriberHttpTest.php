@@ -47,17 +47,7 @@ class SubscriberHttpTest extends TestCase
     {
         $this->baseuri = getenv('TESTS_LAMINAS_FEED_PUBSUBHUBBUB_BASEURI');
         if ($this->baseuri) {
-            if (substr($this->baseuri, -1) !== '/') {
-                $this->baseuri .= '/';
-            }
-            $name = $this->getName();
-            if (($pos = strpos($name, ' ')) !== false) {
-                $name = substr($name, 0, $pos);
-            }
-            $uri          = $this->baseuri . $name . '.php';
-            $this->client = new HttpClient($uri);
-            $this->client->setAdapter(Socket::class);
-            PubSubHubbub::setHttpClient($this->client);
+
             $this->subscriber = new Subscriber();
             $this->subscriber->setDefaultProtocol(PubSubHubbub::PROTOCOL03);
 
@@ -84,7 +74,9 @@ class SubscriberHttpTest extends TestCase
                 . '&hub.lease_seconds=2592000&hub.mode='
                 . 'subscribe&hub.topic=http%3A%2F%2Fwww.example.com%2Ftopic&hub.veri'
                 . 'fy=sync&hub.verify=async&hub.verify_token=abc',
-            $this->client->getResponse()->getBody()
+            $this->subscriber
+                ->getSuccesses()[$this->baseuri . '/testRawPostData.php']
+                ->getBody()
         );
     }
 
@@ -103,7 +95,9 @@ class SubscriberHttpTest extends TestCase
                 . '&hub.lease_seconds=2592000&hub.mode='
                 . 'subscribe&hub.topic=http%3A%2F%2Fwww.example.com%2Ftopic&hub.veri'
                 . 'fy=sync&hub.verify=async&hub.verify_token=abc',
-            $this->client->getResponse()->getBody()
+            $this->subscriber
+                ->getSuccesses()[$this->baseuri . '/testRawPostData.php']
+                ->getBody()
         );
     }
 
@@ -121,7 +115,9 @@ class SubscriberHttpTest extends TestCase
                 . '&hub.mode='
                 . 'subscribe&hub.topic=http%3A%2F%2Fwww.example.com%2Ftopic&hub.veri'
                 . 'fy=sync&hub.verify=async&hub.verify_token=abc',
-            $this->client->getResponse()->getBody()
+            $this->subscriber
+                ->getSuccesses()[$this->baseuri . '/testRawPostData.php']
+                ->getBody()
         );
     }
 
@@ -146,7 +142,9 @@ class SubscriberHttpTest extends TestCase
                 . '&hub.mode=unsubscribe&hub.topic=http'
                 . '%3A%2F%2Fwww.example.com%2Ftopic&hub.verify=sync&hub.verify=async'
                 . '&hub.verify_token=abc',
-            $this->client->getResponse()->getBody()
+            $this->subscriber
+                ->getSuccesses()[$this->baseuri . '/testRawPostData.php']
+                ->getBody()
         );
     }
 
@@ -163,7 +161,9 @@ class SubscriberHttpTest extends TestCase
                 . '&hub.mode=unsubscribe&hub.topic=http'
                 . '%3A%2F%2Fwww.example.com%2Ftopic&hub.verify=sync&hub.verify=async'
                 . '&hub.verify_token=abc',
-            $this->client->getResponse()->getBody()
+            $this->subscriber
+                ->getSuccesses()[$this->baseuri . '/testRawPostData.php']
+                ->getBody()
         );
     }
 
@@ -182,7 +182,9 @@ class SubscriberHttpTest extends TestCase
                 . '&hub.foo=bar&hub.mode='
                 . 'subscribe&hub.topic=http%3A%2F%2Fwww.example.com%2Ftopic&hub.veri'
                 . 'fy=sync&hub.verify=async&hub.verify_token=abc',
-            $this->client->getResponse()->getBody()
+            $this->subscriber
+                ->getSuccesses()[$this->baseuri . '/testRawPostData.php']
+                ->getBody()
         );
     }
 
@@ -202,7 +204,9 @@ class SubscriberHttpTest extends TestCase
                 . '&hub.foo=bar&hub.mode='
                 . 'subscribe&hub.topic=http%3A%2F%2Fwww.example.com%2Ftopic&hub.veri'
                 . 'fy=sync&hub.verify=async&hub.verify_token=abc',
-            $this->client->getResponse()->getBody()
+            $this->subscriber
+                ->getSuccesses()[$this->baseuri . '/testRawPostData.php']
+                ->getBody()
         );
     }
 
@@ -214,7 +218,9 @@ class SubscriberHttpTest extends TestCase
         $this->subscriber->setCallbackUrl('http://www.example.com/callback');
         $this->subscriber->setTestStaticToken('abc'); // override for testing
         $this->subscriber->subscribeAll();
-        $headers = json_decode($this->client->getResponse()->getBody(), true);
+        $headers = json_decode($this->subscriber
+            ->getSuccesses()[$this->baseuri . '/testRawHeaders.php']
+            ->getBody(), true);
         $this->assertEquals(
             'application/x-www-form-urlencoded',
             $headers['Content-Type']
@@ -230,7 +236,9 @@ class SubscriberHttpTest extends TestCase
         $this->subscriber->setTestStaticToken('abc'); // override for testing
         $this->subscriber->addAuthentication($hubUrl, ['user', 'pass']);
         $this->subscriber->subscribeAll();
-        $headers = json_decode($this->client->getResponse()->getBody(), true);
+        $headers = json_decode($this->subscriber
+            ->getSuccesses()[$this->baseuri . '/testRawHeaders.php']
+            ->getBody(), true);
         $this->assertEquals(
             'Basic ' . base64_encode('user:pass'),
             $headers['Authorization']
@@ -246,7 +254,9 @@ class SubscriberHttpTest extends TestCase
         $this->subscriber->setTestStaticToken('abc'); // override for testing
         $this->subscriber->addAuthentication('randomurl', ['user', 'pass']);
         $this->subscriber->subscribeAll();
-        $headers = json_decode($this->client->getResponse()->getBody(), true);
+        $headers = json_decode($this->subscriber
+            ->getSuccesses()[$this->baseuri . '/testRawHeaders.php']
+            ->getBody(), true);
         $this->assertArrayNotHasKey('Authorization', $headers);
     }
 
@@ -259,7 +269,9 @@ class SubscriberHttpTest extends TestCase
         $this->subscriber->setTestStaticToken('abc'); // override for testing
         $this->subscriber->setHeader('foo', 'bar');
         $this->subscriber->subscribeAll();
-        $headers = json_decode($this->client->getResponse()->getBody(), true);
+        $headers = json_decode($this->subscriber
+            ->getSuccesses()[$this->baseuri . '/testRawHeaders.php']
+            ->getBody(), true);
         $this->assertEquals(
             'bar',
             $headers['foo']
@@ -275,7 +287,9 @@ class SubscriberHttpTest extends TestCase
         $this->subscriber->setTestStaticToken('abc'); // override for testing
         $this->subscriber->setHubHeader($hubUrl, 'foo', 'bar');
         $this->subscriber->subscribeAll();
-        $headers = json_decode($this->client->getResponse()->getBody(), true);
+        $headers = json_decode($this->subscriber
+            ->getSuccesses()[$this->baseuri . '/testRawHeaders.php']
+            ->getBody(), true);
         $this->assertEquals(
             'bar',
             $headers['foo']
@@ -291,7 +305,8 @@ class SubscriberHttpTest extends TestCase
         $this->subscriber->setTestStaticToken('abc'); // override for testing
         $this->subscriber->setHubHeader('randomurl', 'foo', 'bar');
         $this->subscriber->subscribeAll();
-        $headers = json_decode($this->client->getResponse()->getBody(), true);
+        $headers = json_decode($this->subscriber
+            ->getSuccesses()[$this->baseuri . '/testRawHeaders.php']->getBody(), true);
         $this->assertArrayNotHasKey('foo', $headers);
     }
 
@@ -311,7 +326,8 @@ class SubscriberHttpTest extends TestCase
                 . '&hub.mode='
                 . 'subscribe&hub.secret=mysecret&hub.topic=http%3A%2F%2Fwww.example.com%2Ftopic&hub.veri'
                 . 'fy=sync&hub.verify=async&hub.verify_token=abc',
-            $this->client->getResponse()->getBody()
+            $this->subscriber
+                ->getSuccesses()[$this->baseuri . '/testRawPostData.php']->getBody()
         );
     }
 
@@ -352,7 +368,8 @@ class SubscriberHttpTest extends TestCase
             'hub.callback=http%3A%2F%2Fwww.example.com%2Fcallback%3Fxhub.subscription%3D' . $token
                 . '&hub.lease_seconds=2592000&hub.mode='
                 . 'subscribe&hub.topic=http%3A%2F%2Fwww.example.com%2Ftopic',
-            $this->client->getResponse()->getBody()
+            $this->subscriber
+                ->getSuccesses()[$this->baseuri . '/testRawPostData.php']->getBody()
         );
     }
 
