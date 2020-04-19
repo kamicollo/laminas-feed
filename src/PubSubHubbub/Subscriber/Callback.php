@@ -18,6 +18,8 @@ use Psr\Http\Message\StreamInterface;
 
 class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
 {
+    protected $responseStatus = 'Not found';
+
     /**
      * True if the content sent as updates to the Callback URL is a feed update
      *
@@ -100,7 +102,7 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
 
         //default response is 404
         $this->setHttpResponse(
-            $this->getHttpResponse()->withStatus(404)
+            $this->getHttpResponse()->withStatus(404, $this->responseStatus)
         );
 
         //confirm we can identify associated subscription
@@ -113,7 +115,18 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
             ) {
                 $this->processVerification();
             }
+        } else {
+            $this->responseStatus = 'Subscription key not identified';
         }
+
+        //update to the latest response status
+        $this->setHttpResponse(
+            $this->getHttpResponse()
+                ->withStatus(
+                    $this->getHttpResponse()->getStatusCode(),
+                    $this->responseStatus
+                )
+        );
 
         if ($sendResponseNow) {
             $this->sendResponse();
@@ -151,7 +164,7 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
          * SHOULD be validated/processed by an asynchronous process so as
          * to avoid holding up responses to the Hub.
          */
-
+        $this->responseStatus = 'OK';
         //always respond with 200
         $this->setHttpResponse(
             $this->getHttpResponse()
@@ -159,7 +172,7 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
                     'X-Hub-On-Behalf-Of',
                     $this->getSubscriberCount()
                 )
-                ->withStatus(200)
+                ->withStatus(200, $this->responseStatus)
         );
         //save content
         $this->setContent($this->getRequest()->getBody());
@@ -179,13 +192,16 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
     {
 
         if (!$this->isValidHubRequest()) {
+            $this->responseStatus = 'Hub request not valid';
             return;
         }
         if (!$this->_hasValidVerifyToken()) {
+            $this->responseStatus = 'Verification token match failed';
             return;
         }
         $mode = strtolower($this->getRequest()->getQueryParams()['hub_mode']);
         if (!$this->confirmSubscriptionState($mode)) {
+            $this->responseStatus = 'Subscription state not aligned with confirmation needed';
             return;
         }
         $this->saveSubscriptionState($mode);
@@ -193,9 +209,10 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
         $stream = fopen('php://memory', 'w+');
         fwrite($stream, $this->getRequest()->getQueryParams()['hub_challenge']);
 
+        $this->responseStatus = 'OK';
         $this->setHttpResponse(
             $this->getHttpResponse()
-                ->withStatus(200)
+                ->withStatus(200, $this->responseStatus)
                 ->withBody(new DiactorosStream($stream))
         );
     }

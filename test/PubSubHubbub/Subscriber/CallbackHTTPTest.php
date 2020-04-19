@@ -230,6 +230,22 @@ class CallbackHTTPTest extends TestCase
         $this->assertEquals(false, $this->_callback->setupSubscription());
     }
 
+    public function testIdentifiesNotExistingSubscriptionReasonPhrase()
+    {
+        $this->_callback->setSubscriptionKey(null);
+        $request = $this->_setupRequest(['xhub_subscription' => 'wrongkey']);
+        $this->_callback->setRequest($request);
+        $this->assertEquals(false, $this->_callback->handle());
+        $this->assertEquals(
+            404,
+            $this->_callback->getHttpResponse()->getStatusCode()
+        );
+        $this->assertEquals(
+            'Subscription key not identified',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
+    }
+
     ######### TEST well-formedness of hub verification requests #############
 
     public function testReturnsFalseIfModeMissingFromHttpGetData()
@@ -239,6 +255,10 @@ class CallbackHTTPTest extends TestCase
         $request = $this->_setupRequest($params);
         $this->_callback->handle($request);
         $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'Hub request not valid',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
     }
 
     public function testReturnsFalseIfTopicMissingFromHttpGetData()
@@ -248,6 +268,10 @@ class CallbackHTTPTest extends TestCase
         $request = $this->_setupRequest($params);
         $this->_callback->handle($request);
         $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'Hub request not valid',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
     }
 
     public function testReturnsFalseIfChallengeMissingFromHttpGetData()
@@ -258,6 +282,10 @@ class CallbackHTTPTest extends TestCase
 
         $this->_callback->handle($request);
         $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'Hub request not valid',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
     }
 
     public function testReturnsFalseIfVerifyTokenMissingFromHttpGetData()
@@ -267,6 +295,10 @@ class CallbackHTTPTest extends TestCase
         $request = $this->_setupRequest($params);
         $this->_callback->handle($request);
         $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'Hub request not valid',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
     }
 
     public function testReturnsTrueIfVerifyTokenMissingFromHttpGetDataButPSHB4()
@@ -281,6 +313,10 @@ class CallbackHTTPTest extends TestCase
 
         $this->_callback->handle($request);
         $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'OK',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
     }
 
     public function testReturnsFalseIfModeNotRecognisedFromHttpGetData()
@@ -290,6 +326,10 @@ class CallbackHTTPTest extends TestCase
         $request = $this->_setupRequest($params);
         $this->_callback->handle($request);
         $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'Hub request not valid',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
     }
 
     public function testReturnsTrueIfModeDenialButPSHB4()
@@ -304,6 +344,10 @@ class CallbackHTTPTest extends TestCase
 
         $this->_callback->handle($request);
         $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'OK',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
     }
 
     public function testReturnsFalseIfLeaseSecondsMissedWhenModeIsSubscribeFromHttpGetData()
@@ -313,6 +357,10 @@ class CallbackHTTPTest extends TestCase
         $request = $this->_setupRequest($params);
         $this->_callback->handle($request);
         $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'Hub request not valid',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
     }
 
     ######### TEST that data sent corresponds to our database #############
@@ -324,6 +372,10 @@ class CallbackHTTPTest extends TestCase
         $request = $this->_setupRequest($params);
         $this->_callback->handle($request);
         $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'Verification token match failed',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
     }
 
     public function testReturnsFalseIfHubNotRequestedToSubscribe()
@@ -337,6 +389,10 @@ class CallbackHTTPTest extends TestCase
         $request = $this->_setupRequest($params);
         $this->_callback->handle($request);
         $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'Subscription state not aligned with confirmation needed',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
     }
 
     public function testReturnsFalseIfHubNotRequestedToUnSubscribeToVerify()
@@ -346,6 +402,10 @@ class CallbackHTTPTest extends TestCase
         $request = $this->_setupRequest($params);
         $this->_callback->handle($request);
         $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'Subscription state not aligned with confirmation needed',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
     }
 
     public function testReturnsFalseIfHubNotRequestedToUnSubscribeVerified()
@@ -360,6 +420,10 @@ class CallbackHTTPTest extends TestCase
         $request = $this->_setupRequest($params);
         $this->_callback->handle($request);
         $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'Subscription state not aligned with confirmation needed',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
     }
 
     ######### TEST successfull requests #############
@@ -368,6 +432,10 @@ class CallbackHTTPTest extends TestCase
     {
         $this->_callback->handle();
         $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'OK',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
         $this->assertEquals('abc', $this->_callback->getHttpResponse()->getBody());
     }
 
@@ -380,6 +448,10 @@ class CallbackHTTPTest extends TestCase
         $this->_callback->handle();
         $this->assertEquals('abc', $this->_callback->getHttpResponse()->getBody());
         $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'OK',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
     }
 
     public function testReturns200ForUnsubscriptionRequest()
@@ -395,6 +467,10 @@ class CallbackHTTPTest extends TestCase
         $this->_callback->handle($request);
         $this->assertEquals('abc', $this->_callback->getHttpResponse()->getBody());
         $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'OK',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
     }
 
     public function testUpdatesDatabaseForUnSubscriptionRequests()
@@ -414,6 +490,10 @@ class CallbackHTTPTest extends TestCase
         $this->_callback->handle($request);
         $this->assertEquals('abc', $this->_callback->getHttpResponse()->getBody());
         $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'OK',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
     }
 
     public function testUpdatesDatabaseForSubscriptionRequestsDenied()
@@ -434,6 +514,10 @@ class CallbackHTTPTest extends TestCase
         $request = $this->_setupRequest($params);
         $this->_callback->handle($request);
         $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'OK',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
     }
 
     public function testUpdatesDatabaseForSubscriptionRequests()
@@ -455,6 +539,10 @@ class CallbackHTTPTest extends TestCase
         $this->_callback->handle();
         $this->assertEquals('abc', $this->_callback->getHttpResponse()->getBody());
         $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'OK',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
     }
 
     public function testUpdatesDatabaseForReSubscriptionRequests()
@@ -477,6 +565,10 @@ class CallbackHTTPTest extends TestCase
         $this->_callback->handle();
         $this->assertEquals('abc', $this->_callback->getHttpResponse()->getBody());
         $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'OK',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
     }
 
     public function testUpdatesDatabaseForReSubscriptionRequestsNoLeaseSeconds()
@@ -500,6 +592,10 @@ class CallbackHTTPTest extends TestCase
         $this->_callback->handle($request);
         $this->assertEquals('abc', $this->_callback->getHttpResponse()->getBody());
         $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'OK',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
     }
 
     ######### FEED UPDATE TESTS #############
@@ -519,6 +615,10 @@ class CallbackHTTPTest extends TestCase
 
         $this->_callback->handle($request);
         $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'OK',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
     }
 
     //do we capture content properly?
@@ -606,6 +706,10 @@ class CallbackHTTPTest extends TestCase
         );
         $this->_callback->handle($request);
         $this->assertEquals(404, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals(
+            'Hub request not valid',
+            $this->_callback->getHttpResponse()->getReasonPhrase()
+        );
     }
 
     public function testRespondsToValidFeedUpdateWithXHubOnBehalfOfHeader()
@@ -733,6 +837,7 @@ class CallbackHTTPTest extends TestCase
 
         $this->_callback->handle($request);
         $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
+        $this->assertEquals('OK', $this->_callback->getHttpResponse()->getReasonPhrase());
         $this->assertEquals(true, $this->_callback->authenticateContent());
     }
 }
