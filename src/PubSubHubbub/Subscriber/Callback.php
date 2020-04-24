@@ -27,7 +27,7 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
     const TokenMismatch = 'Verify token mismatch';
     const StateMismatch = 'Subscription state mismatch';
     const SubscriptionConfirmed = 'Subscription confirmed';
-    const SubscriptionDenied = 'Subscription confirmed';
+    const SubscriptionDenied = 'Subscription denied';
     const UnsubscriptionConfirmed = 'Unsubscription confirmed';
 
 
