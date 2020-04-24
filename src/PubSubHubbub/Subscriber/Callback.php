@@ -236,8 +236,11 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
         }
         $this->saveSubscriptionState($mode);
 
+        $params = $this->getRequest()->getQueryParams();
         $stream = fopen('php://memory', 'w+');
-        fwrite($stream, $this->getRequest()->getQueryParams()['hub_challenge']);
+        if (array_key_exists('hub_challenge', $params)) {
+            fwrite($stream, $params['hub_challenge']);
+        }
 
         $this->responseStatus = 'OK';
         $this->setHttpResponse(

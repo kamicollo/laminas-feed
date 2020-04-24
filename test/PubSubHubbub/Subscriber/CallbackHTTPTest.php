@@ -336,6 +336,7 @@ class CallbackHTTPTest extends TestCase
     {
         $params = $this->default_params;
         $params['hub_mode'] = 'denied';
+        unset($params['hub_challenge']);
         $request = $this->_setupRequest($params);
         $db_params = $this->default_db;
         $db_params['hub_protocol'] = PubSubHubbub::PROTOCOL04;
