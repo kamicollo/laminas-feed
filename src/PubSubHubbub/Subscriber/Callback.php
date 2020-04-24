@@ -18,6 +18,19 @@ use Psr\Http\Message\StreamInterface;
 
 class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
 {
+    const InvalidHubRequest = 'InvalidHubRequest';
+    const VerificationRequest = 'VerificationRequest';
+    const ContentUpdate = 'ContentUpdate';
+
+    const UnknownSubscription = 'Subscription not identified';
+    const BadHTTPRequest = 'Request missing mandatory parameters';
+    const TokenMismatch = 'Verify token mismatch';
+    const StateMismatch = 'Subscription state mismatch';
+    const SubscriptionConfirmed = 'Subscription confirmed';
+    const SubscriptionDenied = 'Subscription confirmed';
+    const UnsubscriptionConfirmed = 'Unsubscription confirmed';
+
+
     protected $responseStatus = 'Not found';
 
     /**
@@ -79,6 +92,10 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
      * @param  string $key
      * @return $this
      */
+
+    protected $status_state = 'Request not made';
+    protected $status_detail = 'Request not made';
+
     public function setSubscriptionKey($key)
     {
         $this->subscriptionKey = $key;
@@ -105,6 +122,9 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
             $this->getHttpResponse()->withStatus(404, $this->responseStatus)
         );
 
+        $this->status_state = self::InvalidHubRequest;
+        $this->status_detail = self::BadHTTPRequest;
+
         //confirm we can identify associated subscription
         //if yes, proceed with processing
         if ($this->setupSubscription()) {
@@ -117,6 +137,8 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
             }
         } else {
             $this->responseStatus = 'Subscription key not identified';
+            $this->status_state = self::InvalidHubRequest;
+            $this->status_detail = self::UnknownSubscription;
         }
 
         //update to the latest response status
@@ -186,6 +208,8 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
             || stripos($contentType, 'application/rdf+xml') === 0)) {
             $this->setFeedUpdate(true);
         }
+        $this->status_state = self::ContentUpdate;
+        $this->status_detail = '';
     }
 
     protected function processVerification()
@@ -193,15 +217,21 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
 
         if (!$this->isValidHubRequest()) {
             $this->responseStatus = 'Hub request not valid';
+            $this->status_state = self::InvalidHubRequest;
+            $this->status_detail = self::BadHTTPRequest;
             return;
         }
         if (!$this->_hasValidVerifyToken()) {
             $this->responseStatus = 'Verification token match failed';
+            $this->status_state = self::InvalidHubRequest;
+            $this->status_detail = self::TokenMismatch;
             return;
         }
         $mode = strtolower($this->getRequest()->getQueryParams()['hub_mode']);
         if (!$this->confirmSubscriptionState($mode)) {
             $this->responseStatus = 'Subscription state not aligned with confirmation needed';
+            $this->status_state = self::InvalidHubRequest;
+            $this->status_detail = self::StateMismatch;
             return;
         }
         $this->saveSubscriptionState($mode);
@@ -314,12 +344,18 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
                 $data['expiration_time'] = null;
             }
             $this->getStorage()->setSubscription($data);
+            $this->status_state = self::VerificationRequest;
+            $this->status_detail = self::SubscriptionConfirmed;
         } elseif ($mode == 'unsubscribe') {
             $this->getStorage()->deleteSubscription($this->subscriptionKey);
+            $this->status_state = self::VerificationRequest;
+            $this->status_detail = self::UnsubscriptionConfirmed;
         } elseif ($mode == 'denied') {
             $data = $this->currentSubscriptionData;
             $data['subscription_state'] = PubSubHubbub::SUBSCRIPTION_DENIED;
             $this->getStorage()->setSubscription($data);
+            $this->status_state = self::VerificationRequest;
+            $this->status_detail = self::SubscriptionDenied;
         }
     }
 
@@ -509,5 +545,13 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
         } else {
             return $this->currentSubscriptionData['secret'] !== null;
         }
+    }
+
+    public function status()
+    {
+        return [
+            'state' => $this->status_state,
+            'details' => $this->status_detail
+        ];
     }
 }

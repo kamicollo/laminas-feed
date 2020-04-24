@@ -840,4 +840,153 @@ class CallbackHTTPTest extends TestCase
         $this->assertEquals('OK', $this->_callback->getHttpResponse()->getReasonPhrase());
         $this->assertEquals(true, $this->_callback->authenticateContent());
     }
+
+    ### TEST STATUS GETTERS ###
+
+    public function testFailedAuthentication()
+    {
+        $this->_callback->setSubscriptionKey(null);
+        $request = $this->_setupRequest(['xhub_subscription' => 'wrongkey']);
+        $this->_callback->setRequest($request);
+        $this->_callback->handle();
+
+        $this->assertEquals(
+            [
+                'state' => CallbackSubscriber::InvalidHubRequest,
+                'details' => CallbackSubscriber::UnknownSubscription
+            ],
+            $this->_callback->status()
+        );
+    }
+
+    public function testFailedHubRequestIntegrity()
+    {
+        $params = $this->default_params;
+        unset($params['hub_mode']);
+        $request = $this->_setupRequest($params);
+        $this->_callback->handle($request);
+
+        $this->assertEquals(
+            [
+                'state' => CallbackSubscriber::InvalidHubRequest,
+                'details' => CallbackSubscriber::BadHTTPRequest
+            ],
+            $this->_callback->status()
+        );
+    }
+
+    public function testFailedHubRequestVerification()
+    {
+        $params = $this->default_params;
+        $params['hub_verify_token'] = 'wrongtoken';
+        $request = $this->_setupRequest($params);
+        $this->_callback->handle($request);
+
+        $this->assertEquals(
+            [
+                'state' => CallbackSubscriber::InvalidHubRequest,
+                'details' => CallbackSubscriber::TokenMismatch
+            ],
+            $this->_callback->status()
+        );
+    }
+
+    public function testFailedSubscriptionStateComparison()
+    {
+        $db_params = $this->default_db;
+        $db_params['subscription_state'] = PubSubHubbub::SUBSCRIPTION_TODELETE;
+        $storage = $this->_setupDB($db_params);
+        $this->_callback->setStorage($storage);
+
+        $params = $this->default_params;
+        $request = $this->_setupRequest($params);
+        $this->_callback->handle($request);
+
+        $this->assertEquals(
+            [
+                'state' => CallbackSubscriber::InvalidHubRequest,
+                'details' => CallbackSubscriber::StateMismatch
+            ],
+            $this->_callback->status()
+        );
+    }
+
+    public function testSuccessfulSubscription()
+    {
+        $this->_callback->handle();
+        $this->assertEquals(200, $this->_callback->getHttpResponse()->getStatusCode());
+
+        $this->assertEquals(
+            [
+                'state' => CallbackSubscriber::VerificationRequest,
+                'details' => CallbackSubscriber::SubscriptionConfirmed
+            ],
+            $this->_callback->status()
+        );
+    }
+
+    public function testSuccessfulUnsubscription()
+    {
+        $db_params = $this->default_db;
+        $db_params['subscription_state'] = PubSubHubbub::SUBSCRIPTION_TODELETE;
+        $storage = $this->_setupDB($db_params);
+        $this->_callback->setStorage($storage);
+
+        $params = $this->default_params;
+        $params['hub_mode'] = 'unsubscribe';
+        $request = $this->_setupRequest($params);
+        $this->_callback->handle($request);
+
+        $this->assertEquals(
+            [
+                'state' => CallbackSubscriber::VerificationRequest,
+                'details' => CallbackSubscriber::UnsubscriptionConfirmed
+            ],
+            $this->_callback->status()
+        );
+    }
+
+    public function testSubscriptionDenied()
+    {
+        $params = $this->default_params;
+        $params['hub_mode'] = 'denied';
+        $request = $this->_setupRequest($params);
+        $db_params = $this->default_db;
+        $db_params['hub_protocol'] = PubSubHubbub::PROTOCOL04;
+        $db = $this->_setupDB($db_params);
+        $this->_callback->setStorage($db);
+
+        $this->_callback->handle($request);
+
+        $this->assertEquals(
+            [
+                'state' => CallbackSubscriber::VerificationRequest,
+                'details' => CallbackSubscriber::SubscriptionDenied
+            ],
+            $this->_callback->status()
+        );
+    }
+
+    public function testContentReceived()
+    {
+        $request = $this->_setupRequest(
+            [],
+            'POST',
+            [
+                ['Content-Type', 'application/atom+xml']
+            ],
+            null,
+            $this->getStream(__DIR__ . '/_files/atom10.xml')
+        );
+
+        $this->_callback->handle($request);
+
+        $this->assertEquals(
+            [
+                'state' => CallbackSubscriber::ContentUpdate,
+                'details' => ''
+            ],
+            $this->_callback->status()
+        );
+    }
 }
