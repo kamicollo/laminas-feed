@@ -554,4 +554,9 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
             'details' => $this->status_detail
         ];
     }
+
+    public function getSubscriptionData()
+    {
+        return $this->currentSubscriptionData;
+    }
 }
