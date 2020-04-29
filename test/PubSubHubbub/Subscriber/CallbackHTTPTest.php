@@ -1036,4 +1036,30 @@ class CallbackHTTPTest extends TestCase
             $callback_snoozed->getContentString()
         );
     }
+
+    public function testAuthenticatedDistributionAfterSerialization()
+    {
+        $db_params = $this->default_db;
+        $db_params['secret'] = 'secret';
+        $db = $this->_setupDB($db_params);
+        $this->_callback->setStorage($db);
+
+        $hmac = 'sha1='
+            . hash_hmac('sha1', file_get_contents(__DIR__ . '/_files/atom10.xml'), 'secret');
+        $request = $this->_setupRequest(
+            [],
+            'POST',
+            [
+                ['X-Hub-Signature', $hmac],
+                ['Content-Type', 'application/atom+xml']
+            ],
+            null,
+            $this->getStream(__DIR__ . '/_files/atom10.xml')
+        );
+
+        $this->_callback->handle($request);
+
+        $callback_snoozed = unserialize(serialize($this->_callback));
+        $this->assertEquals(true, $this->_callback->authenticateContent());
+    }
 }
