@@ -530,7 +530,7 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
         $check = 'sha1='
             . hash_hmac(
                 'sha1',
-                $this->getRequest()->getBody()->getContents(),
+                $this->getRequest()->getBody()->__toString(),
                 $this->currentSubscriptionData['secret']
             );
         return $sha1 === $check;

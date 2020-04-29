@@ -842,6 +842,31 @@ class CallbackHTTPTest extends TestCase
         $this->assertEquals(true, $this->_callback->authenticateContent());
     }
 
+    public function testAuthenticatedDistributionAfterReadingContentManually()
+    {
+        $db_params = $this->default_db;
+        $db_params['secret'] = 'secret';
+        $db = $this->_setupDB($db_params);
+        $this->_callback->setStorage($db);
+
+        $hmac = 'sha1='
+            . hash_hmac('sha1', file_get_contents(__DIR__ . '/_files/atom10.xml'), 'secret');
+        $request = $this->_setupRequest(
+            [],
+            'POST',
+            [
+                ['X-Hub-Signature', $hmac],
+                ['Content-Type', 'application/atom+xml']
+            ],
+            null,
+            $this->getStream(__DIR__ . '/_files/atom10.xml')
+        );
+
+        $this->_callback->handle($request);
+        $this->_callback->getContent()->getContents();
+        $this->assertEquals(true, $this->_callback->authenticateContent());
+    }
+
     ### TEST STATUS GETTERS ###
 
     public function testFailedAuthentication()
