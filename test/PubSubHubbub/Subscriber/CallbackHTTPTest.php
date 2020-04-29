@@ -657,10 +657,9 @@ class CallbackHTTPTest extends TestCase
         );
 
         $this->_callback->handle($request);
-        $this->assertInstanceOf(StreamInterface::class, $this->_callback->getFeedUpdate());
         $this->assertEquals(
             $this->getStream(__DIR__ . '/_files/atom10.xml')->getContents(),
-            $this->_callback->getFeedUpdate()->getContents()
+            $this->_callback->getFeedUpdate()
         );
         $this->assertEquals(true, $this->_callback->hasFeedUpdate());
     }

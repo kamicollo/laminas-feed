@@ -41,11 +41,18 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
     protected $feedUpdate = false;
 
     /**
-     * Contains the content of any updates sent to the Callback URL
+     * Contains the content stream of any updates sent to the Callback URL
+     *
+     * @var StreamInterface
+     */
+    protected $content;
+
+    /**
+     * Contains the content (as string) of any updates sent to the Callback URL
      *
      * @var string
      */
-    protected $content;
+    protected $content_as_string;
 
     /**
      * Holds a manually set subscription key (i.e. identifies a unique
@@ -400,6 +407,23 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
     }
 
     /**
+     * Gets a newly received content sent by a Hub as an update to a
+     * Topic we've subscribed to. This may be not feed content (e.g. HTML/JSON)
+     *     
+     * @return string
+     */
+    public function getContentString()
+    {
+        if ($this->content_as_string === null) {
+            $content = $this->getContent();
+            if ($content instanceof StreamInterface) {
+                $this->content_as_string = $content->__toString();
+            }
+        }
+        return $this->content_as_string;
+    }
+
+    /**
      * Check if any newly received feed (Atom/RSS) update was received
      *
      * @return bool
@@ -416,12 +440,12 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
      * Gets a newly received feed (Atom/RSS) sent by a Hub as an update to a
      * Topic we've subscribed to.
      *
-     * @return StreamInterface|null
+     * @return string
      */
     public function getFeedUpdate()
     {
         if ($this->hasFeedUpdate()) {
-            return $this->getContent();
+            return $this->getContentString();
         }
     }
 
@@ -530,7 +554,7 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
         $check = 'sha1='
             . hash_hmac(
                 'sha1',
-                $this->getRequest()->getBody()->__toString(),
+                $this->getContentString(),
                 $this->currentSubscriptionData['secret']
             );
         return $sha1 === $check;
