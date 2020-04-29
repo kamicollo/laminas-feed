@@ -30,7 +30,6 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
     const SubscriptionDenied = 'Subscription denied';
     const UnsubscriptionConfirmed = 'Unsubscription confirmed';
 
-
     protected $responseStatus = 'Not found';
 
     /**
@@ -585,5 +584,16 @@ class Callback extends \ForkedLaminas\Feed\PubSubHubbub\AbstractCallback
     public function getSubscriptionData()
     {
         return $this->currentSubscriptionData;
+    }
+
+    public function __sleep()
+    {
+        //make sure to capture the string content of stream
+        $this->getContentString();
+        return array_keys(get_object_vars($this));
+    }
+
+    public function __wakeup()
+    {
     }
 }

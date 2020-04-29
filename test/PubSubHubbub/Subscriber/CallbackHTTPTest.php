@@ -1014,4 +1014,26 @@ class CallbackHTTPTest extends TestCase
             $this->_callback->status()
         );
     }
+
+    public function testSerialization()
+    {
+        $request = $this->_setupRequest(
+            [],
+            'POST',
+            [
+                ['Content-Type', 'application/atom+xml']
+            ],
+            null,
+            $this->getStream(__DIR__ . '/_files/atom10.xml')
+        );
+
+        $this->_callback->handle($request);
+
+        $callback_snoozed = unserialize(serialize($this->_callback));
+
+        $this->assertEquals(
+            $this->getStream(__DIR__ . '/_files/atom10.xml')->getContents(),
+            $callback_snoozed->getContentString()
+        );
+    }
 }
