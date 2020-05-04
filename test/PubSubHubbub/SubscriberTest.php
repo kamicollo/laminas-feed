@@ -671,4 +671,18 @@ class SubscriberTest extends TestCase
         $this->subscriber->addHubUrl('http://example.com', PubSubHubbub::PROTOCOL04);
         $this->assertEquals(null, $this->subscriber->getHubProtocol('foo'));
     }
+
+    public function testOverwriteHubProtocolWithNull()
+    {
+        $this->subscriber->setHubProtocol('http://hub.com', PubSubHubbub::PROTOCOL04);
+        $this->subscriber->addHubUrl('http://hub.com');
+        $this->assertEquals(PubSubHubbub::PROTOCOL04, $this->subscriber->getHubProtocol('http://hub.com'));
+    }
+
+    public function testOverwriteHubProtocolWithOther()
+    {
+        $this->subscriber->setHubProtocol('http://hub.com', PubSubHubbub::PROTOCOL04);
+        $this->subscriber->addHubUrl('http://hub.com', PubSubHubbub::PROTOCOL03);
+        $this->assertEquals(PubSubHubbub::PROTOCOL03, $this->subscriber->getHubProtocol('http://hub.com'));
+    }
 }

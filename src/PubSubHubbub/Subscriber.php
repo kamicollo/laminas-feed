@@ -447,11 +447,15 @@ class Subscriber
      * @return $this
      * @throws Exception\InvalidArgumentException
      */
-    public function addHubUrl($url, $protocol = null)
+    public function addHubUrl($url, $protocol = 'default')
     {
         $this->_validateUrl($url, "url");
         $this->hubUrls[] = $url;
-        $this->setHubProtocol($url, $protocol);
+        if ($protocol !== 'default') {
+            $this->setHubProtocol($url, $protocol);
+        } elseif ($this->getHubProtocol($url) === null) {
+            $this->setHubProtocol($url, null);
+        }
         return $this;
     }
 
