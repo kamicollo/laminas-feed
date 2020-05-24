@@ -1060,6 +1060,6 @@ class CallbackHTTPTest extends TestCase
         $this->_callback->handle($request);
 
         $callback_snoozed = unserialize(serialize($this->_callback));
-        $this->assertEquals(true, $this->_callback->authenticateContent());
+        $this->assertEquals(true, $callback_snoozed->authenticateContent());
     }
 }
